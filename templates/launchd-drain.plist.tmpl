@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>com.blackswan.ibis.drain.{{UNIT_ID}}</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/bash</string>
+    <string>{{IBIS_BIN}}</string>
+    <string>poll</string>
+    <string>--drain-only</string>
+  </array>
+  <key>WorkingDirectory</key><string>{{REPO_ROOT}}</string>
+  <!-- launchd's equivalent of a systemd .path unit: fire whenever the .notify
+       directory changes (a new *.pending message lands). Instant drain, no
+       broker. The drain takes a flock so it can't race the StartInterval poll. -->
+  <key>WatchPaths</key>
+  <array>
+    <string>{{REPO_ROOT}}/.ibis/.notify</string>
+  </array>
+  <key>StandardOutPath</key><string>{{REPO_ROOT}}/.ibis/.poll.log</string>
+  <key>StandardErrorPath</key><string>{{REPO_ROOT}}/.ibis/.poll.log</string>
+</dict>
+</plist>

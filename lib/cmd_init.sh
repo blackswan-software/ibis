@@ -95,12 +95,12 @@ ibis_init() {
     [[ $adopt -eq 0 ]] && info "re-run with --adopt to add these as nodes, or add selectively with 'ibis add-node'"
   fi
 
-  # ── systemd units ─────────────────────────────────────────────────────────
+  # ── Scheduler: timer + instant drain (platform-detected) ──────────────────
   echo ""
   if [[ $units -eq 1 ]]; then
-    _ibis_install_units "$REPO_NAME" "$REPO_ID"
+    install_scheduler "$REPO_NAME" "$REPO_ID"
   else
-    _ibis_print_cron
+    info "skipped scheduler install (--no-units). Install later: ibis install-scheduler"
   fi
 
   echo ""
@@ -110,31 +110,5 @@ ibis_init() {
   echo "    ibis add-node <name> --check '<cmd>' --poll"
 }
 
-_ibis_install_units() {
-  local REPO_NAME="$1" UNIT_ID="$2"
-  if ! command -v systemctl &>/dev/null || ! systemctl --user show-environment &>/dev/null; then
-    warn "systemd --user not available — falling back to cron"
-    _ibis_print_cron
-    return
-  fi
-  local ud="$HOME/.config/systemd/user"; mkdir -p "$ud"
-  local IBIS_BIN; IBIS_BIN="$IBIS_HOME/bin/ibis"
-  export REPO_NAME UNIT_ID IBIS_BIN REPO_ROOT
-
-  render "$IBIS_HOME/templates/ibis-poll.service.tmpl"  > "$ud/ibis-poll-$UNIT_ID.service"
-  render "$IBIS_HOME/templates/ibis-poll.timer.tmpl"    > "$ud/ibis-poll-$UNIT_ID.timer"
-  render "$IBIS_HOME/templates/ibis-drain.service.tmpl" > "$ud/ibis-drain-$UNIT_ID.service"
-  render "$IBIS_HOME/templates/ibis-drain.path.tmpl"    > "$ud/ibis-drain-$UNIT_ID.path"
-
-  systemctl --user daemon-reload
-  systemctl --user enable --now "ibis-poll-$UNIT_ID.timer" >/dev/null 2>&1
-  systemctl --user enable --now "ibis-drain-$UNIT_ID.path"  >/dev/null 2>&1
-  ok "systemd  ibis-poll-$UNIT_ID.timer (2-min checks) + ibis-drain-$UNIT_ID.path (instant drain)"
-  echo "    linger keeps these running when logged out:  loginctl enable-linger \$USER"
-}
-
-_ibis_print_cron() {
-  warn "manual scheduling — add to crontab (no systemd):"
-  echo "    */2 * * * * cd $REPO_ROOT && $IBIS_HOME/bin/ibis poll >> .ibis/.poll.log 2>&1"
-  echo "  Instant drain needs inotify; without systemd, the 2-min cron is the floor."
-}
+# Platform-specific scheduler install lives in lib/scheduler.sh
+# (install_scheduler / uninstall_scheduler), shared with `ibis install-scheduler`.

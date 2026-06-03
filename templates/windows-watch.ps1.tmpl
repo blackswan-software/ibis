@@ -1,0 +1,23 @@
+# ibis-watch.ps1 — instant .notify drain on Windows (the systemd .path / launchd
+# WatchPaths equivalent). Registered as an at-logon Scheduled Task by `ibis init`.
+# Watches .ibis\.notify for new *.pending files and runs `ibis poll --drain-only`.
+$ErrorActionPreference = "Stop"
+$repo   = "{{REPO_ROOT}}"
+$notify = Join-Path $repo ".ibis\.notify"
+
+if (-not (Test-Path $notify)) { New-Item -ItemType Directory -Force -Path $notify | Out-Null }
+
+$fsw = New-Object System.IO.FileSystemWatcher
+$fsw.Path   = $notify
+$fsw.Filter = "*.pending"
+$fsw.EnableRaisingEvents = $true
+
+$action = {
+  # bash comes from Git Bash / WSL on PATH; runs the same drain as every platform.
+  & bash -lc "cd '$($Event.MessageData)' && ibis poll --drain-only" 2>&1 |
+    Out-File -Append -FilePath (Join-Path $Event.MessageData ".ibis\.poll.log")
+}
+Register-ObjectEvent -InputObject $fsw -EventName Created -MessageData $repo -Action $action | Out-Null
+
+Write-Host "ibis: watching $notify for new messages (Ctrl-C to stop)"
+while ($true) { Start-Sleep -Seconds 3600 }

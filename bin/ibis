@@ -11,18 +11,22 @@
 #   ibis status [--all]                run checks now, report pass/fail
 #   ibis doctor [--strict]             enforce check+doc+test on every node (CI)
 #   ibis notify <message>              drop a message on the bus
+#   ibis install-scheduler             (re)install the timer + instant-drain watcher
+#   ibis uninstall-scheduler           remove this repo's scheduler
 set -uo pipefail
 
 IBIS_HOME="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/.." && pwd)"
 export IBIS_HOME
 
 # shellcheck source=/dev/null
-for f in common discover addnode init poll status doctor notify; do
-  source "$IBIS_HOME/lib/cmd_$f.sh" 2>/dev/null || source "$IBIS_HOME/lib/$f.sh"
+source "$IBIS_HOME/lib/common.sh"
+source "$IBIS_HOME/lib/scheduler.sh"
+for f in discover addnode init poll status doctor notify; do
+  source "$IBIS_HOME/lib/cmd_$f.sh"
 done
 
 ibis_help() {
-  sed -n '2,18p' "$IBIS_HOME/bin/ibis" | sed 's/^# \{0,1\}//'
+  sed -n '2,20p' "$IBIS_HOME/bin/ibis" | sed 's/^# \{0,1\}//'
 }
 
 # Commands that operate on a repo set their own paths; init/discover call
@@ -36,6 +40,12 @@ case "$cmd" in
   status)    set_paths; ibis_status "$@";;
   doctor)    set_paths; ibis_doctor "$@";;
   notify)    set_paths; ibis_notify "$@";;
+  install-scheduler)
+    set_paths; require_init
+    install_scheduler "$(basename "$REPO_ROOT")" "$(nodeid "$(basename "$REPO_ROOT")")";;
+  uninstall-scheduler)
+    set_paths
+    uninstall_scheduler "$(nodeid "$(basename "$REPO_ROOT")")";;
   -h|--help|help) ibis_help;;
   version|--version) echo "ibis 0.1.0";;
   *) err "unknown command: $cmd"; ibis_help; exit 2;;

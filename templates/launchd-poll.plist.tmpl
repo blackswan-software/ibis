@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>com.blackswan.ibis.poll.{{UNIT_ID}}</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/bash</string>
+    <string>{{IBIS_BIN}}</string>
+    <string>poll</string>
+  </array>
+  <key>WorkingDirectory</key><string>{{REPO_ROOT}}</string>
+  <!-- launchd's timer: run ibis poll every 120s (health checks + drain). -->
+  <key>StartInterval</key><integer>120</integer>
+  <key>RunAtLoad</key><true/>
+  <key>StandardOutPath</key><string>{{REPO_ROOT}}/.ibis/.poll.log</string>
+  <key>StandardErrorPath</key><string>{{REPO_ROOT}}/.ibis/.poll.log</string>
+</dict>
+</plist>

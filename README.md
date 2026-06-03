@@ -18,14 +18,56 @@ git. That zero-dependency footprint is the point — ibis installs anywhere.
 
 ## Install
 
+ibis is `bash` + `python3` + `git`. Two steps: put the CLI on your PATH, then
+`ibis init` installs the per-repo scheduler using whatever your OS provides.
+
+### macOS / Linux / WSL
+
 ```sh
 git clone https://github.com/blackswan-software/ibis ~/.ibis-cli
-ln -s ~/.ibis-cli/bin/ibis ~/.local/bin/ibis   # anywhere on $PATH
+~/.ibis-cli/install.sh          # symlinks ibis into ~/.local/bin, checks deps
 ibis version
 ```
 
-Requirements: `bash`, `python3`, `git`. Optional: `systemd --user` (instant
-delivery + timers) or `cron` (2-min polling).
+### Windows
+
+ibis runs under **Git Bash** (install "Git for Windows") or **WSL**. From
+PowerShell:
+
+```powershell
+git clone https://github.com/blackswan-software/ibis $env:USERPROFILE\.ibis-cli
+& $env:USERPROFILE\.ibis-cli\install.ps1   # writes an ibis.cmd shim → bash, fixes PATH
+# then use ibis from Git Bash:
+ibis version
+```
+
+(WSL users can ignore the PowerShell script and just run `install.sh` inside WSL.)
+
+### Per-repo scheduling — one concept, four backends
+
+`ibis init` detects your platform and installs a **2-min timer** (runs the health
+checks) plus an **instant-drain watcher** (delivers `.notify` messages in
+sub-second time). No broker, no daemon you manage.
+
+| Platform | Timer | Instant drain | Set up by |
+|---|---|---|---|
+| **Linux** | `systemd --user` `.timer` | `systemd` `.path` (PathExistsGlob) | `ibis init` |
+| **macOS** | `launchd` `StartInterval` | `launchd` `WatchPaths` | `ibis init` |
+| **Windows** | Task Scheduler `/sc minute` | PowerShell `FileSystemWatcher` (at-logon task) | `ibis init` |
+| **any** | `cron` `*/2` | — (poll is the floor) | `ibis init` fallback |
+
+Re-run or remove the scheduler anytime:
+
+```sh
+ibis install-scheduler      # (re)install for the current repo
+ibis uninstall-scheduler    # remove it
+```
+
+Linux only: `loginctl enable-linger $USER` keeps the units running when you're
+logged out. macOS `launchd` and Windows Task Scheduler persist by default.
+
+Requirements: `bash`, `python3`, `git`. Everything else (systemd/launchd/schtasks)
+is whatever your OS already ships; `cron` is the universal fallback.
 
 ---
 
@@ -97,12 +139,14 @@ into `HANDOFF.md`:
 ibis notify "registry returning 504s"
 ```
 
-- **Floor:** a 2-min `systemd` timer (`ibis poll`) runs the health checks and
-  drains the bus. With only cron available, this is the whole story.
-- **Ceiling:** a `systemd` `.path` unit watches `.notify/*.pending` and triggers
-  `ibis poll --drain-only` the instant a message lands — sub-second delivery, no
-  broker. Health checks stay on the timer (the checked services emit no events,
-  so there's nothing to push from); only *messaging* is event-driven.
+- **Floor:** a 2-min timer (`ibis poll`) runs the health checks and drains the
+  bus — systemd `.timer`, launchd `StartInterval`, or cron. With only cron, this
+  is the whole story.
+- **Ceiling:** a file-watch (systemd `.path`, launchd `WatchPaths`, or a Windows
+  `FileSystemWatcher`) triggers `ibis poll --drain-only` the instant a message
+  lands — sub-second delivery, no broker. Health checks stay on the timer (the
+  checked services emit no events, so there's nothing to push from); only
+  *messaging* is event-driven.
 
 A `flock` single-flight lock means the timer poll and the instant drain can never
 double-process a message.
