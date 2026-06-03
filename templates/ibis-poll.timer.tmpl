@@ -1,0 +1,10 @@
+[Unit]
+Description=ibis poll timer ({{REPO_NAME}}) — every 2 minutes
+
+[Timer]
+OnBootSec=30sec
+OnUnitActiveSec=2min
+AccuracySec=10sec
+
+[Install]
+WantedBy=timers.target

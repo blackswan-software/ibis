@@ -1,0 +1,9 @@
+# ibis is a CLI — it has no runtime state of its own. These appear only when
+# ibis is run *inside a target repo*, never in this repo, but ignore them anyway.
+.ibis/.notify/
+.ibis/.poll.log
+.ibis/.poll.lock
+.ibis/.notified-failures
+.ibis/.current-failures
+*.pyc
+__pycache__/

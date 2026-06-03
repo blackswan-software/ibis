@@ -1,0 +1,52 @@
+#!/usr/bin/env bash
+# common.sh — shared helpers for the ibis CLI. Sourced by bin/ibis.
+
+# ── Locations ─────────────────────────────────────────────────────────────
+# IBIS_HOME = where ibis is installed (set by bin/ibis).
+# REPO_ROOT = the git repo (or cwd) ibis is operating on.
+# IBIS_DIR  = the per-repo state dir, REPO_ROOT/.ibis
+repo_root() { git rev-parse --show-toplevel 2>/dev/null || pwd; }
+
+set_paths() {
+  REPO_ROOT="$(repo_root)"
+  IBIS_DIR="$REPO_ROOT/.ibis"
+  GRAPH="$IBIS_DIR/GRAPH.dot"
+  NOTIFY_DIR="$IBIS_DIR/.notify"
+  DOCS_DIR="$IBIS_DIR/docs"
+  TESTS_DIR="$REPO_ROOT/tests/ibis"
+  HANDOFF="$REPO_ROOT/HANDOFF.md"
+}
+
+# ── Output ────────────────────────────────────────────────────────────────
+ts()   { date '+%Y-%m-%d %H:%M'; }
+info() { printf '\033[36m●\033[0m %s\n' "$*"; }
+ok()   { printf '\033[32m✓\033[0m %s\n' "$*"; }
+warn() { printf '\033[33m!\033[0m %s\n' "$*" >&2; }
+err()  { printf '\033[31m✗\033[0m %s\n' "$*" >&2; }
+die()  { err "$*"; exit 1; }
+
+require_init() {
+  [[ -f "$GRAPH" ]] || die "no .ibis/GRAPH.dot in $REPO_ROOT — run 'ibis init' first"
+}
+
+# Render a template, substituting {{VAR}} placeholders from the environment.
+# Usage: render templates/foo.tmpl > dest   (with VARs exported)
+render() {
+  local tmpl="$1"
+  [[ -f "$tmpl" ]] || die "missing template: $tmpl"
+  local line; local out
+  out="$(cat "$tmpl")"
+  # Substitute every {{NAME}} with ${NAME}
+  while [[ "$out" =~ \{\{([A-Z_][A-Z0-9_]*)\}\} ]]; do
+    local key="${BASH_REMATCH[1]}"
+    local val="${!key:-}"
+    out="${out//\{\{$key\}\}/$val}"
+  done
+  printf '%s\n' "$out"
+}
+
+# slug: lowercase, strip non-alnum to dashes (for node names / filenames)
+slug() { echo "$1" | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9]+/-/g; s/^-+|-+$//g'; }
+
+# camel node id from a slug (graphviz-friendly: no dashes)
+nodeid() { slug "$1" | sed -E 's/-([a-z0-9])/\U\1/g'; }

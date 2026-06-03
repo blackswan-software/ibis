@@ -1,0 +1,9 @@
+[Unit]
+Description=ibis instant drain ({{REPO_NAME}}) — triggered by ibis-drain-{{UNIT_ID}}.path
+
+[Service]
+Type=oneshot
+WorkingDirectory={{REPO_ROOT}}
+ExecStart={{IBIS_BIN}} poll --drain-only
+StandardOutput=append:{{REPO_ROOT}}/.ibis/.poll.log
+StandardError=append:{{REPO_ROOT}}/.ibis/.poll.log

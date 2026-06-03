@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+# Test for ibis node: {{NODE_NAME}}
+# REQUIRED by `ibis doctor`. Exit 0 = pass, non-zero = fail.
+#
+# This is a behavioral test for the node, distinct from its `check=` (which is a
+# fast liveness probe). Replace the placeholder with a real assertion. A node
+# with only a stub test is reported as "stub" by `ibis doctor --strict`.
+set -euo pipefail
+
+# ── TODO: real assertion ───────────────────────────────────────────────────
+# Examples:
+#   curl -fsS http://localhost:8080/health | grep -q '"ok":true'
+#   test -f /var/run/{{NODE_ID}}.pid
+#   docker inspect -f '{{ "{{" }}.State.Running{{ "}}" }}' {{NODE_ID}} | grep -q true
+
+echo "STUB: {{NODE_NAME}} test not yet written"
+exit 0

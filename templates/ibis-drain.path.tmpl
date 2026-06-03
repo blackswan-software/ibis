@@ -1,0 +1,10 @@
+[Unit]
+Description=ibis .notify watcher ({{REPO_NAME}}) — instant drain on new message
+
+# PathExistsGlob, not DirectoryNotEmpty: .notify/ holds an archive/ subdir and
+# would otherwise fire forever. The glob matches only live *.pending messages.
+[Path]
+PathExistsGlob={{REPO_ROOT}}/.ibis/.notify/*.pending
+
+[Install]
+WantedBy=paths.target

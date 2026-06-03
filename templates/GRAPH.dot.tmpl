@@ -1,0 +1,25 @@
+digraph {{REPO_ID}} {
+  rankdir=LR;
+  node [shape=box, style=rounded, fontname="monospace"];
+
+  // ── ibis graph ─────────────────────────────────────────────────────────
+  // The graph IS the system. Service nodes carry actionable attributes:
+  //   check=     health assertion (shell; exit 0 = healthy)
+  //   poll="fast" run this check on the 2-min timer
+  //   doc=       path to the node's .md doc        (REQUIRED — ibis doctor)
+  //   test=      path to the node's test script    (REQUIRED — ibis doctor)
+  //   restart=   remediation command (run by a human/agent after diagnosis)
+  //   todo=      active work item for this node
+  //
+  // Add nodes with:   ibis add-node <name>
+  // See candidates:   ibis discover
+
+  // ── Root ─────────────────────────────────────────────────────────────────
+  {{REPO_ID}} [
+    label="{{REPO_NAME}}\nrepo root",
+    doc=".ibis/docs/{{REPO_ID}}.md",
+    test="tests/ibis/{{REPO_ID}}.sh"
+  ];
+
+  // ── Service nodes (added below by `ibis add-node` / `ibis discover`) ──────
+}

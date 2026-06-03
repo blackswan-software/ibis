@@ -1,0 +1,42 @@
+#!/usr/bin/env bash
+# ibis — graph-driven coordination for any repo.
+# The graph (.ibis/GRAPH.dot) IS the system: nodes carry check=, doc=, test=,
+# restart=. ibis polls the checks, drains a fire-and-forget message bus into
+# HANDOFF.md, and enforces that every node has a check, a doc, and a test.
+#
+#   ibis init [--adopt] [--no-units]   scaffold + auto-discover + install timers
+#   ibis discover                      list candidate nodes from repo structure
+#   ibis add-node <name> --check '…'   add a node (creates doc + test stubs)
+#   ibis poll [--drain-only]           run checks + drain bus (used by systemd)
+#   ibis status [--all]                run checks now, report pass/fail
+#   ibis doctor [--strict]             enforce check+doc+test on every node (CI)
+#   ibis notify <message>              drop a message on the bus
+set -uo pipefail
+
+IBIS_HOME="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/.." && pwd)"
+export IBIS_HOME
+
+# shellcheck source=/dev/null
+for f in common discover addnode init poll status doctor notify; do
+  source "$IBIS_HOME/lib/cmd_$f.sh" 2>/dev/null || source "$IBIS_HOME/lib/$f.sh"
+done
+
+ibis_help() {
+  sed -n '2,18p' "$IBIS_HOME/bin/ibis" | sed 's/^# \{0,1\}//'
+}
+
+# Commands that operate on a repo set their own paths; init/discover call
+# set_paths themselves. For the rest we set paths up front.
+cmd="${1:-help}"; shift || true
+case "$cmd" in
+  init)      ibis_init "$@";;
+  discover)  ibis_discover "$@";;
+  add-node)  set_paths; ibis_add_node "$@";;
+  poll)      set_paths; ibis_poll "$@";;
+  status)    set_paths; ibis_status "$@";;
+  doctor)    set_paths; ibis_doctor "$@";;
+  notify)    set_paths; ibis_notify "$@";;
+  -h|--help|help) ibis_help;;
+  version|--version) echo "ibis 0.1.0";;
+  *) err "unknown command: $cmd"; ibis_help; exit 2;;
+esac

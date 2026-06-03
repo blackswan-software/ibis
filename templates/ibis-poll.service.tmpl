@@ -1,0 +1,9 @@
+[Unit]
+Description=ibis poll ({{REPO_NAME}}) — run health checks + drain .notify
+
+[Service]
+Type=oneshot
+WorkingDirectory={{REPO_ROOT}}
+ExecStart={{IBIS_BIN}} poll
+StandardOutput=append:{{REPO_ROOT}}/.ibis/.poll.log
+StandardError=append:{{REPO_ROOT}}/.ibis/.poll.log
