@@ -24,7 +24,7 @@ ibis is `bash` + `python3` + `git`. Two steps: put the CLI on your PATH, then
 ### macOS / Linux / WSL
 
 ```sh
-git clone https://github.com/blackswan-software/ibis ~/.ibis-cli
+git clone https://github.com/HBDunn/blackswan-ibis ~/.ibis-cli
 ~/.ibis-cli/install.sh          # symlinks ibis into ~/.local/bin, checks deps
 ibis version
 ```
@@ -35,7 +35,7 @@ ibis runs under **Git Bash** (install "Git for Windows") or **WSL**. From
 PowerShell:
 
 ```powershell
-git clone https://github.com/blackswan-software/ibis $env:USERPROFILE\.ibis-cli
+git clone https://github.com/HBDunn/blackswan-ibis $env:USERPROFILE\.ibis-cli
 & $env:USERPROFILE\.ibis-cli\install.ps1   # writes an ibis.cmd shim → bash, fixes PATH
 # then use ibis from Git Bash:
 ibis version
