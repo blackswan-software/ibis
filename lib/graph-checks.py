@@ -71,6 +71,14 @@ def main():
             print(f'{n["node"]}\t{has_check}\t{n.get("doc","")}\t{n.get("test","")}')
         return
 
+    if "--audit" in sys.argv:
+        # Full contract per node for `ibis audit` (stamp + assertions + test run):
+        #   node <TAB> check <TAB> restart <TAB> doc <TAB> test
+        for n in nodes:
+            print("\t".join([n["node"], n.get("check", ""), n.get("restart", ""),
+                             n.get("doc", ""), n.get("test", "")]))
+        return
+
     show_all = "--all" in sys.argv
     for n in nodes:
         if "check" not in n:
