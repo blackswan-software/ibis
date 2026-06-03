@@ -74,9 +74,12 @@ def main():
     if "--audit" in sys.argv:
         # Full contract per node for `ibis audit` (stamp + assertions + test run):
         #   node <TAB> check <TAB> restart <TAB> doc <TAB> test
+        # Empty fields are emitted as "-" so adjacent tabs never collapse under
+        # bash's `IFS=$'\t' read` (tab is IFS-whitespace). The reader maps "-"→"".
         for n in nodes:
-            print("\t".join([n["node"], n.get("check", ""), n.get("restart", ""),
-                             n.get("doc", ""), n.get("test", "")]))
+            vals = [n["node"], n.get("check", ""), n.get("restart", ""),
+                    n.get("doc", ""), n.get("test", "")]
+            print("\t".join(v if v != "" else "-" for v in vals))
         return
 
     show_all = "--all" in sys.argv

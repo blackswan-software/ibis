@@ -133,6 +133,40 @@ map trustworthy.
 
 ---
 
+## Auditing — proving docs are true and not stale
+
+`ibis doctor` proves the doc and test *files exist*. `ibis audit` goes further and
+proves the docs are **honest**, three ways per node:
+
+1. **Freshness (stamps).** Every doc carries `<!-- ibis-stamp: HASH -->`, a hash of
+   its node's contract (`check`/`restart`/`doc`/`test`). `ibis add-node` writes it.
+   Change the node in the graph without re-reviewing the doc → the stamp no longer
+   matches → audit reports **STALE**. After you update the doc, run `ibis stamp
+   <node>` to acknowledge it's current again.
+2. **Truth (executable assertions).** A doc can contain fenced `ibis-assert`
+   blocks. `ibis audit` *runs* each one and requires exit 0 — so the doc's claims
+   are checked, not just asserted in prose:
+
+   ````markdown
+   ```ibis-assert
+   curl -fsS localhost:8082/healthz | grep -q '"status":"ok"'
+   ```
+   ````
+
+   If the system drifts from what the doc claims, the assertion fails and so does
+   the audit.
+3. **Behaviour (test runs).** `ibis audit` executes each node's `tests/ibis/<node>.sh`
+   (skip with `--no-run`).
+
+```sh
+ibis audit            # stale docs, failed assertions, failing tests → non-zero exit
+ibis audit --strict   # also fails on leftover TODO / unstamped docs
+ibis stamp web        # mark web's doc reviewed after editing it
+```
+
+Exit non-zero on any stale doc, failed assertion, or failing test — so `ibis audit`
+is a CI gate for *doc honesty*, complementing `ibis doctor`'s structural gate.
+
 ## Messaging: polled floor, event-driven ceiling
 
 The `.notify/` bus is fire-and-forget — drop a message, the next drain renders it
@@ -166,6 +200,8 @@ double-process a message.
 | `ibis poll [--drain-only]` | run checks + drain bus (used by systemd) |
 | `ibis status [--all]` | run checks now, report pass/fail |
 | `ibis doctor [--strict]` | enforce check+doc+test on every node (CI gate) |
+| `ibis audit [--strict] [--no-run]` | prove docs are true (assertions) + fresh (stamps) |
+| `ibis stamp [<node>\|--all]` | (re)stamp docs after you've reviewed them |
 | `ibis notify <message>` | drop a message on the bus |
 
 ---
@@ -187,7 +223,8 @@ jobs:
       - run: |
           git clone --depth 1 https://github.com/HBDunn/blackswan-ibis ~/.ibis-cli
           ~/.ibis-cli/install.sh && echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-      - run: ibis doctor --strict
+      - run: ibis doctor --strict   # structure: every node has check + doc + test
+      - run: ibis audit             # honesty: docs fresh, assertions true, tests pass
 ```
 
 ibis's own CI (`.github/workflows/ci.yml`) runs the full CLI on Ubuntu, macOS, and

@@ -46,6 +46,9 @@ ibis_init() {
       render "$IBIS_HOME/templates/node-test.sh.tmpl" > "$TESTS_DIR/$REPO_ID.sh"
     chmod +x "$TESTS_DIR/$REPO_ID.sh"
   fi
+  # Stamp the root doc so `ibis audit` treats it as fresh (root has no check).
+  _write_stamp "$DOCS_DIR/$REPO_ID.md" \
+    "$(_compute_stamp "" "" ".ibis/docs/$REPO_ID.md" "tests/ibis/$REPO_ID.sh")"
 
   # HANDOFF + gitignore for runtime state
   if [[ ! -f "$HANDOFF" ]]; then

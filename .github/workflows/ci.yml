@@ -67,6 +67,24 @@ jobs:
           ibis add-node payments --check 'true' --poll
           ibis doctor
 
+      - name: Audit — doc truth + freshness gate
+        run: |
+          set -euo pipefail
+          repo="$(mktemp -d)"; cd "$repo"; git init -q
+          printf 'services:\n  web:\n    image: nginx\n' > compose.yaml
+          ibis init --adopt --no-units >/dev/null
+          ibis audit                                  # fresh adopt: passes (TODO = notes)
+          if ibis audit --strict; then echo "BUG: --strict should fail on TODO docs"; exit 1; fi
+          # Freshness: change the node contract → STALE → re-stamp → fresh again.
+          # (~ delimiter avoids the | and . in the check; temp file avoids GNU/BSD
+          #  `sed -i` differences.)
+          sed 's~grep -q .~grep -q . ~' .ibis/GRAPH.dot > .ibis/GRAPH.dot.new
+          mv .ibis/GRAPH.dot.new .ibis/GRAPH.dot
+          if ibis audit; then echo "BUG: audit should flag the stale doc"; exit 1; fi
+          ibis stamp web >/dev/null
+          ibis audit
+          echo "OK audit: fresh passes, --strict catches TODO, stamp drift detected + cleared"
+
       - name: Messaging — notify + one-shot drain
         run: |
           set -euo pipefail

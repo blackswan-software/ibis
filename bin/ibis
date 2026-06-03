@@ -10,6 +10,8 @@
 #   ibis poll [--drain-only]           run checks + drain bus (used by systemd)
 #   ibis status [--all]                run checks now, report pass/fail
 #   ibis doctor [--strict]             enforce check+doc+test on every node (CI)
+#   ibis audit [--strict] [--no-run]   prove docs are true (assertions) + fresh (stamps)
+#   ibis stamp [<node>|--all]          (re)stamp docs after reviewing them
 #   ibis notify <message>              drop a message on the bus
 #   ibis install-scheduler             (re)install the timer + instant-drain watcher
 #   ibis uninstall-scheduler           remove this repo's scheduler
@@ -36,12 +38,13 @@ export IBIS_HOME
 # shellcheck source=/dev/null
 source "$IBIS_HOME/lib/common.sh"
 source "$IBIS_HOME/lib/scheduler.sh"
-for f in discover addnode init poll status doctor notify; do
+for f in discover addnode init poll status doctor audit notify; do
   source "$IBIS_HOME/lib/cmd_$f.sh"
 done
 
 ibis_help() {
-  sed -n '2,20p' "$IBIS_HOME/bin/ibis" | sed 's/^# \{0,1\}//'
+  # Print the leading comment block (skip the shebang, stop at first code line).
+  awk 'NR==1{next} /^#/{sub(/^# ?/,""); print; next} {exit}' "$IBIS_HOME/bin/ibis"
 }
 
 # Commands that operate on a repo set their own paths; init/discover call
@@ -54,6 +57,8 @@ case "$cmd" in
   poll)      set_paths; ibis_poll "$@";;
   status)    set_paths; ibis_status "$@";;
   doctor)    set_paths; ibis_doctor "$@";;
+  audit)     set_paths; ibis_audit "$@";;
+  stamp)     set_paths; ibis_stamp "$@";;
   notify)    set_paths; ibis_notify "$@";;
   install-scheduler)
     set_paths; require_init

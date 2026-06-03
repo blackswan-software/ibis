@@ -74,6 +74,38 @@ Run it locally and in CI. A node that someone added by editing `GRAPH.dot`
 directly, without a doc or test, fails here. That is what turns "docs and tests
 required" from a guideline into an invariant.
 
+## Auditing: proving docs are true and fresh
+
+`ibis doctor` checks the *files exist*. `ibis audit` proves the docs are *honest*:
+
+- **Freshness (stamp).** Each doc ends with `<!-- ibis-stamp: HASH -->`, a `cksum`
+  of the node's contract string (`check|restart|doc|test`). `ibis add-node` and
+  `ibis init` write it; `ibis audit` recomputes and compares. If the node's
+  contract changed but the doc wasn't re-reviewed, the hash differs → **STALE**.
+  `ibis stamp <node>` re-stamps after you've updated the doc. This is precise (no
+  date-guessing): the doc is provably in sync with the node's actionable attributes
+  or it fails.
+- **Truth (assertions).** Fenced ` ```ibis-assert ` blocks in the doc are extracted
+  and run under `bash -e`; every block must exit 0. This is how a doc *proves* its
+  claims rather than just stating them. Example:
+
+  ````markdown
+  ```ibis-assert
+  test -f /etc/myservice/config.yml
+  curl -fsS localhost:9000/version | grep -q '2\.'
+  ```
+  ````
+- **Behaviour (test).** `ibis audit` runs `tests/ibis/<node>.sh` (skip with
+  `--no-run` for a docs-only audit).
+
+Severity: a stale stamp, a failed assertion, or a failing test is a **failure**
+(non-zero exit). Leftover `TODO` text and missing stamps/assert-blocks are **notes**
+under plain `audit`, and become failures under `audit --strict`.
+
+Why the stamp covers the *contract* and not the doc prose: editing prose shouldn't
+trip the audit, but changing what the node *does* (its check or remediation) must
+force a doc re-review. The stamp captures exactly that boundary.
+
 ## Editing by hand
 
 You can always edit `GRAPH.dot` directly — it's the source of truth and meant to be

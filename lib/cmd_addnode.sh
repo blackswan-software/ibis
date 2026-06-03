@@ -77,6 +77,9 @@ ibis_add_node() {
     echo "}"
   } > "$GRAPH.tmp" && mv "$GRAPH.tmp" "$GRAPH"
 
+  # Stamp the doc with the node's contract so `ibis audit` can detect drift.
+  _write_stamp "$REPO_ROOT/$doc_rel" "$(_compute_stamp "$check" "$restart" "$doc_rel" "$test_rel")"
+
   ok "node  $id  ($([[ -n "$poll" ]] && echo 'poll=fast' || echo 'on-demand') check)"
   info "edit the doc + test, then: ibis doctor"
 }
