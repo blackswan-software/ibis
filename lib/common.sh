@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 # common.sh — shared helpers for the ibis CLI. Sourced by bin/ibis.
 
+# Python interpreter — macOS/Git-Bash may expose only `python`, not `python3`.
+PYTHON="$(command -v python3 || command -v python || true)"
+
 # ── Locations ─────────────────────────────────────────────────────────────
 # IBIS_HOME = where ibis is installed (set by bin/ibis).
 # REPO_ROOT = the git repo (or cwd) ibis is operating on.
@@ -49,4 +52,7 @@ render() {
 slug() { echo "$1" | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9]+/-/g; s/^-+|-+$//g'; }
 
 # camel node id from a slug (graphviz-friendly: no dashes)
-nodeid() { slug "$1" | sed -E 's/-([a-z0-9])/\U\1/g'; }
+# camelCase a slug into a graphviz-safe id (no GNU-sed \U — BSD-safe via awk)
+nodeid() {
+  slug "$1" | awk -F- '{ s=$1; for (i=2;i<=NF;i++) s=s toupper(substr($i,1,1)) substr($i,2); print s }'
+}

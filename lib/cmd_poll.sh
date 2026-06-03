@@ -26,7 +26,7 @@ ibis_poll() {
     [[ -f "$f" ]] || continue
     msg=$(cat "$f")
     new_msgs+=("$(ts)  $msg")
-    mv "$f" "$NOTIFY_DIR/archive/$(date +%s%N)-$(basename "$f")"
+    mv "$f" "$NOTIFY_DIR/archive/$(date +%s)-$RANDOM-$(basename "$f")"
   done
 
   # ── Health checks (full poll only) ────────────────────────────────────────
@@ -50,7 +50,7 @@ ibis_poll() {
         curr["$name"]=1
         [[ -z "${prev[$name]:-}" ]] && new_failures+=("$name")
       fi
-    done < <(IBIS_GRAPH="$GRAPH" python3 "$IBIS_HOME/lib/graph-checks.py")
+    done < <(IBIS_GRAPH="$GRAPH" "$PYTHON" "$IBIS_HOME/lib/graph-checks.py")
 
     # Rebuild anti-flap sentinel (epoch name per line)
     {

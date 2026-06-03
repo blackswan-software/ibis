@@ -1,0 +1,113 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+
+      # macOS ships bash 3.2; ibis needs >= 4. Put brew's bash first on PATH so
+      # the `#!/usr/bin/env bash` shebang picks it up.
+      - name: Modern bash (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          brew install bash
+          echo "$(brew --prefix)/bin" >> "$GITHUB_PATH"
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Versions
+        run: |
+          echo "uname: $(uname -s)"
+          bash --version | head -1
+          { command -v python3 >/dev/null && python3 --version; } || python --version
+          git --version
+
+      - name: Install ibis on PATH
+        run: |
+          if [ "$RUNNER_OS" = "Windows" ]; then
+            chmod +x bin/ibis lib/graph-checks.py || true
+            echo "$PWD/bin" >> "$GITHUB_PATH"
+          else
+            ./install.sh
+            echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          fi
+
+      - name: ibis version
+        run: ibis version
+
+      # ── Deterministic, hard-asserted on every OS ──────────────────────────
+      - name: Core — init, discover, add-node, doctor gate
+        run: |
+          set -euo pipefail
+          repo="$(mktemp -d)"; cd "$repo"; git init -q
+          printf 'services:\n  web:\n    image: nginx\n' > compose.yaml
+          ibis init --adopt --no-units
+          echo "::group::generated GRAPH.dot"; cat .ibis/GRAPH.dot; echo "::endgroup::"
+          ibis doctor                                    # non-strict MUST pass
+          if ibis doctor --strict; then
+            echo "BUG: doctor --strict should fail on stub tests"; exit 1
+          fi
+          echo "OK doctor gate: passes non-strict, fails --strict on stubs"
+          ibis add-node payments --check 'true' --poll
+          ibis doctor
+
+      - name: Messaging — notify + one-shot drain
+        run: |
+          set -euo pipefail
+          repo="$(mktemp -d)"; cd "$repo"; git init -q
+          ibis init --no-units
+          ibis notify "ci message probe"
+          ibis poll --drain-only
+          grep -q "ci message probe" HANDOFF.md
+          echo "OK message drained into HANDOFF.md"
+
+      # ── macOS: launchd plist generation is deterministic → hard assert ────
+      - name: Scheduler — launchd plists valid (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          set -euo pipefail
+          repo="$(mktemp -d)"; cd "$repo"; git init -q
+          ibis init --no-units >/dev/null
+          ibis install-scheduler || true   # launchctl load may warn in headless CI; plists still written
+          ls "$HOME/Library/LaunchAgents/"com.blackswan.ibis.*.plist
+          for p in "$HOME/Library/LaunchAgents/"com.blackswan.ibis.*.plist; do
+            plutil -lint "$p"
+          done
+          echo "OK launchd plists generated and valid"
+          ibis uninstall-scheduler || true
+
+      # ── Windows: FileSystemWatcher script generation is deterministic ─────
+      - name: Scheduler — watcher script + tasks (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          set -euo pipefail
+          repo="$(mktemp -d)"; cd "$repo"; git init -q
+          ibis init --no-units >/dev/null
+          ibis install-scheduler || true
+          test -f .ibis/ibis-watch.ps1
+          echo "OK FileSystemWatcher script generated"
+          powershell -NoProfile -Command "Get-Content .ibis/ibis-watch.ps1 | Out-Null; 'ps1 readable'" || true
+          ibis uninstall-scheduler || true
+
+      # ── Honest note: CI cannot prove the event TRIGGER fires (no interactive
+      #    login session / launchd GUI domain). That needs a real/VM session. ──
+      - name: Note on trigger firing
+        run: |
+          echo "CI validates scheduler *creation* + script/plist validity + the drain logic."
+          echo "It does NOT prove the file-watch wakes on an event (needs an interactive session)."

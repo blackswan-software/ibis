@@ -1,5 +1,7 @@
 # ibis
 
+![ci](https://github.com/HBDunn/blackswan-ibis/actions/workflows/ci.yml/badge.svg)
+
 **Graph-driven coordination for any repo.** Drop ibis into a project and it gives
 you a live system map (`GRAPH.dot`) whose nodes are *executable*: each carries a
 health `check=`, a `doc=`, and a `test=`. ibis polls the checks, drains a
@@ -66,8 +68,9 @@ ibis uninstall-scheduler    # remove it
 Linux only: `loginctl enable-linger $USER` keeps the units running when you're
 logged out. macOS `launchd` and Windows Task Scheduler persist by default.
 
-Requirements: `bash`, `python3`, `git`. Everything else (systemd/launchd/schtasks)
-is whatever your OS already ships; `cron` is the universal fallback.
+Requirements: **`bash` ≥ 4** (macOS ships 3.2 — `brew install bash`), `python3`
+(or `python`), `git`. Everything else (systemd/launchd/schtasks) is whatever your
+OS already ships; `cron` is the universal fallback.
 
 ---
 
@@ -166,6 +169,33 @@ double-process a message.
 | `ibis notify <message>` | drop a message on the bus |
 
 ---
+
+## Use the contract as your CI gate
+
+`ibis doctor --strict` exits non-zero if any node lacks a real check, doc, or
+(non-stub) test. Drop this in **your** repo to keep the map honest on every push:
+
+```yaml
+# .github/workflows/ibis.yml
+name: ibis
+on: [push, pull_request]
+jobs:
+  doctor:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          git clone --depth 1 https://github.com/HBDunn/blackswan-ibis ~/.ibis-cli
+          ~/.ibis-cli/install.sh && echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+      - run: ibis doctor --strict
+```
+
+ibis's own CI (`.github/workflows/ci.yml`) runs the full CLI on Ubuntu, macOS, and
+Windows. It hard-asserts init/discover/add-node, the doctor gate, and the
+notify→drain path on all three, and validates launchd plists (`plutil -lint`) on
+macOS and the FileSystemWatcher script on Windows. It does **not** assert that the
+file-watch trigger physically fires — that needs an interactive session, so verify
+it once by hand on a real (or VM) macOS/Windows box.
 
 ## License
 

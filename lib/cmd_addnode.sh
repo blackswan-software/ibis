@@ -64,7 +64,7 @@ ibis_add_node() {
   local check_esc="${check//\"/\\\"}"
   local root; root="$(grep -oE '^digraph[[:space:]]+[A-Za-z0-9_]+' "$GRAPH" | awk '{print $2}')"
   {
-    head -n -1 "$GRAPH"
+    sed '$d' "$GRAPH"   # all but the final lone "}" (BSD-safe; head -n -1 isn't)
     echo "  $id ["
     echo "    label=\"$name\","
     echo "    check=\"$check_esc\","

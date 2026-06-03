@@ -8,7 +8,8 @@ ibis_notify() {
   local msg="$*"
   [[ -z "$msg" ]] && die "usage: ibis notify <message>"
   mkdir -p "$NOTIFY_DIR"
-  local f="$NOTIFY_DIR/$(date +%s%N)-msg.pending"
+  # BSD date has no %N; $$/$RANDOM keep names unique within a second.
+  local f="$NOTIFY_DIR/$(date +%s)-$$-$RANDOM-msg.pending"
   printf '%s\n' "$msg" > "$f"
   ok "queued: $msg"
 }

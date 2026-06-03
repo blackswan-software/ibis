@@ -13,7 +13,7 @@ ibis_status() {
     else
       err "$name${doc:+  → $doc}"; ((nfail++))
     fi
-  done < <(IBIS_GRAPH="$GRAPH" python3 "$IBIS_HOME/lib/graph-checks.py" $mode)
+  done < <(IBIS_GRAPH="$GRAPH" "$PYTHON" "$IBIS_HOME/lib/graph-checks.py" $mode)
   echo ""
   printf 'ibis status: %d passing, %d failing\n' "$npass" "$nfail"
   [[ $nfail -eq 0 ]]

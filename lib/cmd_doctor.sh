@@ -40,7 +40,7 @@ ibis_doctor() {
       err "$node — $(IFS='; '; echo "${problems[*]}")"
       ((violations += ${#problems[@]}))
     fi
-  done < <(IBIS_GRAPH="$GRAPH" python3 "$IBIS_HOME/lib/graph-checks.py" --contract)
+  done < <(IBIS_GRAPH="$GRAPH" "$PYTHON" "$IBIS_HOME/lib/graph-checks.py" --contract)
 
   echo ""
   if [[ $violations -eq 0 ]]; then
