@@ -63,3 +63,17 @@ slug() { echo "$1" | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9]+/-/g; s/^-
 nodeid() {
   slug "$1" | awk -F- '{ s=$1; for (i=2;i<=NF;i++) s=s toupper(substr($i,1,1)) substr($i,2); print s }'
 }
+
+# Project identity. An explicit name in .ibis/config wins; else the repo dir name.
+# Used to namespace everything a human sees (HANDOFF title, message tags, scheduler
+# unit names, hub member display, federated <name>:<node> refs) so a consumer with
+# two ibis projects can tell them apart. Needs set_paths first (uses IBIS_DIR).
+project_name() {
+  local cfg="${IBIS_DIR:-}/config"
+  if [[ -n "${IBIS_DIR:-}" && -f "$cfg" ]] && grep -q '^name=' "$cfg"; then
+    grep '^name=' "$cfg" | head -1 | cut -d= -f2-
+  else
+    basename "${REPO_ROOT:-$PWD}"
+  fi
+}
+project_id() { nodeid "$(project_name)"; }

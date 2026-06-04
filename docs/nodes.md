@@ -106,6 +106,35 @@ Why the stamp covers the *contract* and not the doc prose: editing prose shouldn
 trip the audit, but changing what the node *does* (its check or remediation) must
 force a doc re-review. The stamp captures exactly that boundary.
 
+## Recovery loops: proof that persists across context resets
+
+Some nodes track a metric you drive up over *many* sessions — sandbox ok-rate, test
+coverage, perf, error count. These have a notorious failure mode: each session
+re-derives the root cause (burning its whole context budget), runs out before it can
+measure, declares a false "shipped, looks good," and the next session starts over.
+Work *resets* instead of *compounding*. (BlackSwan lived this: 6 weeks to 0.62% on a
+training corpus.)
+
+ibis's node primitives compose into the fix — make the proof durable and the
+work-unit atomic:
+
+| Need | ibis primitive |
+|---|---|
+| Capture root cause **once** (don't re-derive) | the node's **doc** = a case file |
+| "Done" = a **measurement**, not a probe | the node's **`check=`** = the metric; `ibis-assert` runs it |
+| Prove the doc is still true + fresh | `ibis audit` (assertions + stamp) |
+| The measured **trend** (compounding proof) | `ibis ledger <node> <value>` |
+| Proof rides with the commit | `ibis hook` (graph-sync commit-msg gate) |
+| One unit per commit (fits one context window) | discipline: one node × one fix × one measurement |
+
+The rule that ties it together: **never mark a recovery node "done" off a probe or a
+healthy process — only off a measured value recorded in its ledger.** The next
+session reads the case file + ledger (cheap) instead of re-deriving (expensive), so
+the loop closes and the trend climbs. This is exactly the framework the BlackSwan hub
+hard-codes for ecosystem ok-rate (case file + `measure-ok-rate.sh` + `ECO_RATE_LEDGER`
++ a pre-commit gate); `ibis ledger` + the doc/audit/hook primitives are its portable
+form.
+
 ## Editing by hand
 
 You can always edit `GRAPH.dot` directly — it's the source of truth and meant to be

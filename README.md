@@ -78,7 +78,10 @@ OS already ships; `cron` is the universal fallback.
 
 ```sh
 cd your-repo
-ibis init --adopt        # scaffold + auto-discover services + install timers
+ibis init --adopt --name myproj   # --name optional (defaults to dir); names this
+                                  # project everywhere (HANDOFF, message tags,
+                                  # scheduler units, hub display) so two projects
+                                  # don't get confused. Stored in .ibis/config.
 ibis status              # run all checks now
 ibis doctor              # verify every node has check + doc + test
 ```
@@ -267,7 +270,9 @@ double-process a message.
 | `ibis audit [--strict] [--no-run]` | prove docs are true (assertions) + fresh (stamps) |
 | `ibis stamp [<node>\|--all]` | (re)stamp docs after you've reviewed them |
 | `ibis notify <message>` | drop a message on the bus (attributed to the worker) |
+| `ibis project` | print this project's name (`.ibis/config` or dir name) |
 | `ibis whoami` | print this worker's id (`IBIS_WORKER` or `user@host`) |
+| `ibis ledger <node> [value]` | record / show a node's measured trend over time |
 | `ibis claim <node> [--ttl N]` | lease a node so other workers don't collide |
 | `ibis release <node> [--force]` | release your lease |
 | `ibis who` | active claims in this repo (expired ones swept) |

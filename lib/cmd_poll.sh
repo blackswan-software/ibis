@@ -76,7 +76,7 @@ ibis_poll() {
   local pending_block=""
   [[ -f "$HANDOFF" ]] && pending_block=$(sed -n '/^## Pending/,$p' "$HANDOFF")
   {
-    echo "# HANDOFF — $(basename "$REPO_ROOT")"
+    echo "# HANDOFF — $(project_name)"
     echo "_Auto-updated by ibis poll. Edit only the Pending section._"
     echo ""
     if [[ ${#failures[@]} -gt 0 ]]; then
@@ -99,7 +99,7 @@ ibis_poll() {
 
   # ── Desktop notification on NEW failures (best-effort) ────────────────────
   if [[ ${#new_failures[@]} -gt 0 ]] && command -v notify-send &>/dev/null; then
-    notify-send "ibis: $(basename "$REPO_ROOT")" "NEW FAIL: ${new_failures[0]}" --urgency=normal 2>/dev/null || true
+    notify-send "ibis: $(project_name)" "NEW FAIL: ${new_failures[0]}" --urgency=normal 2>/dev/null || true
   fi
 
   echo "[$(ts)] ibis poll: ${#failures[@]} failures, ${#new_msgs[@]} messages$([[ $DRAIN_ONLY -eq 1 ]] && echo ' (drain-only)')"

@@ -10,12 +10,13 @@
 
 ibis_init() {
   set_paths
-  local adopt=0 units=1 force=0
+  local adopt=0 units=1 force=0 name=""
   while [[ $# -gt 0 ]]; do
     case "$1" in
       --adopt) adopt=1; shift;;
       --no-units) units=0; shift;;
       --force) force=1; shift;;
+      --name) name="$2"; shift 2;;
       *) die "unknown flag: $1";;
     esac
   done
@@ -28,8 +29,11 @@ ibis_init() {
   mkdir -p "$IBIS_DIR" "$NOTIFY_DIR/archive" "$DOCS_DIR" "$TESTS_DIR"
   : > "$NOTIFY_DIR/.gitkeep"
 
+  # Project name: explicit --name wins, else the repo dir name. Persisted to
+  # .ibis/config so everything a consumer sees is namespaced to this project.
   local REPO_NAME REPO_ID
-  REPO_NAME="$(basename "$REPO_ROOT")"
+  REPO_NAME="${name:-$(basename "$REPO_ROOT")}"
+  printf 'name=%s\n' "$REPO_NAME" > "$IBIS_DIR/config"
   REPO_ID="$(nodeid "$REPO_NAME")"; [[ -z "$REPO_ID" ]] && REPO_ID="repo"
 
   REPO_NAME="$REPO_NAME" REPO_ID="$REPO_ID" \

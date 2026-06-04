@@ -28,6 +28,18 @@ set_hub_paths() {
 require_hub() { [[ -f "$MEMBERS" ]] || die "no .ibis-hub here — run 'ibis hub init' first"; }
 _members()    { [[ -f "$MEMBERS" ]] && grep -vE '^[[:space:]]*(#|$)' "$MEMBERS" 2>/dev/null; return 0; }
 
+# A member's project name — its .ibis/config name=, else the dir name. So the
+# aggregate HANDOFF tags messages/failures by project (cygnus, web) not by an
+# ambiguous dir basename, and federated refs can use <name>:<node>.
+_member_name() {
+  local cfg="$1/.ibis/config"
+  if [[ -f "$cfg" ]] && grep -q '^name=' "$cfg"; then
+    grep '^name=' "$cfg" | head -1 | cut -d= -f2-
+  else
+    basename "$1"
+  fi
+}
+
 ibis_hub() {
   set_hub_paths
   local sub="${1:-status}"; shift || true
@@ -140,7 +152,7 @@ _hub_who() {
   local member name f any=0 now; now=$(date +%s)
   while IFS= read -r member; do
     [[ -z "$member" ]] && continue
-    name="$(basename "$member")"
+    name="$(_member_name "$member")"
     [[ -d "$member/.ibis/claims" ]] || continue
     for f in "$member/.ibis/claims"/*.lease; do
       [[ -f "$f" ]] || continue
@@ -173,7 +185,7 @@ _hub_poll() {
   local member name
   while IFS= read -r member; do
     [[ -z "$member" ]] && continue
-    name="$(basename "$member")"
+    name="$(_member_name "$member")"
     if [[ -d "$member/.ibis/.notify" ]]; then
       # Take the member's own poll lock so we don't race its timer (if any).
       exec 8>"$member/.ibis/.poll.lock"; flock 8

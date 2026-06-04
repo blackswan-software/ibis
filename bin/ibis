@@ -12,7 +12,9 @@
 #   ibis doctor [--strict]             enforce check+doc+test on every node (CI)
 #   ibis audit [--strict] [--no-run]   prove docs are true (assertions) + fresh (stamps)
 #   ibis stamp [<node>|--all]          (re)stamp docs after reviewing them
+#   ibis ledger <node> [value] [note]  record / show a node's measured trend
 #   ibis notify <message>              drop a message on the bus (attributed to IBIS_WORKER)
+#   ibis project                       print this project's name (.ibis/config or dir)
 #   ibis whoami                        print this worker's id (IBIS_WORKER or user@host)
 #   ibis claim <node> [--ttl N]        lease a node so other workers don't collide
 #   ibis release <node> [--force]      release your lease
@@ -44,7 +46,7 @@ export IBIS_HOME
 # shellcheck source=/dev/null
 source "$IBIS_HOME/lib/common.sh"
 source "$IBIS_HOME/lib/scheduler.sh"
-for f in discover addnode init poll status doctor audit hub claim hook notify; do
+for f in discover addnode init poll status doctor audit hub claim hook ledger notify; do
   source "$IBIS_HOME/lib/cmd_$f.sh"
 done
 
@@ -65,6 +67,7 @@ case "$cmd" in
   doctor)    set_paths; ibis_doctor "$@";;
   audit)     set_paths; ibis_audit "$@";;
   stamp)     set_paths; ibis_stamp "$@";;
+  ledger)    set_paths; ibis_ledger "$@";;
   notify)    set_paths; ibis_notify "$@";;
   whoami)    worker_id;;
   claim)     set_paths; ibis_claim "$@";;
@@ -74,10 +77,12 @@ case "$cmd" in
   hook)      ibis_hook "$@";;
   install-scheduler)
     set_paths; require_init
-    install_scheduler "$(basename "$REPO_ROOT")" "$(nodeid "$(basename "$REPO_ROOT")")";;
+    install_scheduler "$(project_name)" "$(project_id)";;
   uninstall-scheduler)
     set_paths
-    uninstall_scheduler "$(nodeid "$(basename "$REPO_ROOT")")";;
+    uninstall_scheduler "$(project_id)";;
+  project)
+    set_paths; project_name;;
   -h|--help|help) ibis_help;;
   version|--version) echo "ibis 0.1.0";;
   *) err "unknown command: $cmd"; ibis_help; exit 2;;
