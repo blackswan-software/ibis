@@ -133,6 +133,25 @@ map trustworthy.
 
 ---
 
+## Coordinator mode — many repos, one HANDOFF
+
+A single repo is the default. To watch several at once, make one of them (or a
+dedicated directory) a **hub**: it drains every member repo's `.notify` bus and
+runs every member's checks into one aggregate `HANDOFF.md`.
+
+```sh
+cd ~/work/coord
+ibis hub init
+ibis hub add ~/work/api
+ibis hub add ~/work/web
+ibis hub poll          # one HANDOFF: P0s + inbox across all members, tagged [repo/node]
+```
+
+Failures show as `FAIL [api/payments]`, messages as `[web] deploy finished`. A
+hub-level bus (`.ibis-hub/.notify/`) carries cross-repo / hub-addressed notes.
+`ibis hub poll --drain-only` is the instant path (reuses the last checks). A repo
+polled by a hub shouldn't also run its own poll timer — the hub is the poller.
+
 ## Auditing — proving docs are true and not stale
 
 `ibis doctor` proves the doc and test *files exist*. `ibis audit` goes further and
@@ -203,6 +222,7 @@ double-process a message.
 | `ibis audit [--strict] [--no-run]` | prove docs are true (assertions) + fresh (stamps) |
 | `ibis stamp [<node>\|--all]` | (re)stamp docs after you've reviewed them |
 | `ibis notify <message>` | drop a message on the bus |
+| `ibis hub <init\|add\|poll\|…>` | coordinator: aggregate many repos into one HANDOFF |
 
 ---
 

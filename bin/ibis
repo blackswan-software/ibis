@@ -13,6 +13,7 @@
 #   ibis audit [--strict] [--no-run]   prove docs are true (assertions) + fresh (stamps)
 #   ibis stamp [<node>|--all]          (re)stamp docs after reviewing them
 #   ibis notify <message>              drop a message on the bus
+#   ibis hub <init|add|poll|…>         coordinator: aggregate many repos into one HANDOFF
 #   ibis install-scheduler             (re)install the timer + instant-drain watcher
 #   ibis uninstall-scheduler           remove this repo's scheduler
 set -uo pipefail
@@ -38,7 +39,7 @@ export IBIS_HOME
 # shellcheck source=/dev/null
 source "$IBIS_HOME/lib/common.sh"
 source "$IBIS_HOME/lib/scheduler.sh"
-for f in discover addnode init poll status doctor audit notify; do
+for f in discover addnode init poll status doctor audit hub notify; do
   source "$IBIS_HOME/lib/cmd_$f.sh"
 done
 
@@ -60,6 +61,7 @@ case "$cmd" in
   audit)     set_paths; ibis_audit "$@";;
   stamp)     set_paths; ibis_stamp "$@";;
   notify)    set_paths; ibis_notify "$@";;
+  hub)       ibis_hub "$@";;
   install-scheduler)
     set_paths; require_init
     install_scheduler "$(basename "$REPO_ROOT")" "$(nodeid "$(basename "$REPO_ROOT")")";;
