@@ -176,6 +176,27 @@ This replaces "commit-as-you-go discipline and hope" with a visible, self-healin
 lock — the failure mode (one worker's work invisible to another) that bites every
 shared-repo multi-agent setup.
 
+## Keeping the graph in sync with commits
+
+The graph is only useful if it matches reality. The classic failure: you *ship*
+the work but forget to *mark it done* in the graph, so the next worker reads a
+stale todo and redoes it (or reports it open).
+
+ibis has a structural edge here: **the graph lives in the repo** (`.ibis/GRAPH.dot`),
+so closing a node's `todo=` can ride in the *same commit* as the work — unlike a
+centralized graph in a separate repo, which can't be updated atomically with the
+code. `ibis hook install` adds a `commit-msg` hook that catches the slip:
+
+```sh
+ibis hook install                 # warn when a commit closes work but doesn't stage the graph
+export IBIS_HOOK_STRICT=1         # make it block instead of warn
+```
+
+If a commit message reads like it closes work (`fixed`, `done`, `shipped`,
+`scrub`, `complete`…) while open `todo=` items exist and `.ibis/GRAPH.dot` isn't
+staged, the hook reminds you to clear the todo in the same commit. Other workers
+read the graph, not your commit history.
+
 ## Auditing — proving docs are true and not stale
 
 `ibis doctor` proves the doc and test *files exist*. `ibis audit` goes further and
@@ -251,6 +272,7 @@ double-process a message.
 | `ibis release <node> [--force]` | release your lease |
 | `ibis who` | active claims in this repo (expired ones swept) |
 | `ibis hub <init\|add\|poll\|who\|…>` | coordinator: aggregate many repos into one HANDOFF |
+| `ibis hook <install\|uninstall>` | git hook: keep `.ibis/GRAPH.dot` in sync with commits |
 
 ---
 

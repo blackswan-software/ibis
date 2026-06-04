@@ -135,6 +135,27 @@ jobs:
           ibis hub who | grep -q 'bob'
           echo "OK coordinator: aggregate inbox + failures tagged by repo; hub who"
 
+      - name: Graph-sync hook — warn / block on closing-without-graph
+        run: |
+          set -euo pipefail
+          repo="$(mktemp -d)"; cd "$repo"; git init -q
+          git config user.email t@t.t; git config user.name t
+          printf 'services:\n  web:\n    image: nginx\n' > compose.yaml
+          ibis init --adopt --no-units >/dev/null
+          ibis add-node payments --check 'true' >/dev/null
+          # give it a real open todo
+          sed -i.bak 's#    check="true",#    check="true",\n    todo="x",#' .ibis/GRAPH.dot && rm -f .ibis/GRAPH.dot.bak
+          ibis hook install >/dev/null
+          git add -A && git commit -q -m setup --no-verify
+          # completion language + graph not staged → warn (allowed)
+          echo x > f1; git add f1
+          git commit -m "fixed payments" 2>&1 | grep -q 'GRAPH-SYNC'
+          # strict → blocked
+          echo y > f2; git add f2
+          if IBIS_HOOK_STRICT=1 git commit -m "shipped it" >/dev/null 2>&1; then
+            echo "BUG: strict hook should block"; exit 1; fi
+          echo "OK hook: warns on close-without-graph, blocks under strict"
+
       # ── macOS: launchd plist generation is deterministic → hard assert ────
       - name: Scheduler — launchd plists valid (macOS)
         if: runner.os == 'macOS'
