@@ -95,6 +95,46 @@ jobs:
           grep -q "ci message probe" HANDOFF.md
           echo "OK message drained into HANDOFF.md"
 
+      - name: Workers — identity, attributed notify, leases (TTL)
+        run: |
+          set -euo pipefail
+          repo="$(mktemp -d)"; cd "$repo"; git init -q
+          printf 'services:\n  web:\n    image: nginx\n' > compose.yaml
+          ibis init --adopt --no-units >/dev/null
+          # attributed notify
+          IBIS_WORKER=alice ibis notify "on web" >/dev/null
+          grep -q '@alice: on web' .ibis/.notify/*.pending
+          # lease collision: alice holds, bob refused
+          IBIS_WORKER=alice ibis claim web
+          if IBIS_WORKER=bob ibis claim web; then echo "BUG: bob should be refused"; exit 1; fi
+          IBIS_WORKER=alice ibis who | grep -q 'alice'
+          # TTL expiry sweeps
+          IBIS_WORKER=carol ibis claim tmp --ttl 1; sleep 2
+          if ibis who | grep -q ' tmp '; then echo "BUG: expired lease not swept"; exit 1; fi
+          IBIS_WORKER=alice ibis release web
+          echo "OK workers: attribution, collision refusal, TTL sweep, release"
+
+      - name: Coordinator — hub aggregates members
+        run: |
+          set -euo pipefail
+          base="$(mktemp -d)"
+          for r in a b; do
+            mkdir -p "$base/$r"; ( cd "$base/$r" && git init -q
+              printf 'services:\n  web:\n    image: nginx\n' > compose.yaml
+              ibis init --adopt --no-units >/dev/null )
+          done
+          mkdir -p "$base/coord"; cd "$base/coord"; git init -q
+          ibis hub init >/dev/null
+          ibis hub add "$base/a" >/dev/null 2>&1
+          ibis hub add "$base/b" >/dev/null 2>&1
+          ( cd "$base/a" && IBIS_WORKER=alice ibis notify "from a" >/dev/null )
+          ibis hub poll >/dev/null
+          grep -q '\[a\] @alice: from a' HANDOFF.md
+          grep -q 'FAIL \[a/web\]' HANDOFF.md
+          ( cd "$base/b" && IBIS_WORKER=bob ibis claim db >/dev/null )
+          ibis hub who | grep -q 'bob'
+          echo "OK coordinator: aggregate inbox + failures tagged by repo; hub who"
+
       # ── macOS: launchd plist generation is deterministic → hard assert ────
       - name: Scheduler — launchd plists valid (macOS)
         if: runner.os == 'macOS'

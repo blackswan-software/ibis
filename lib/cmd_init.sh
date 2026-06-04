@@ -70,6 +70,7 @@ ibis_init() {
       echo ".ibis/.poll.lock"
       echo ".ibis/.notified-failures"
       echo ".ibis/.current-failures"
+      echo ".ibis/claims/"
       echo "HANDOFF.md"
     } >> "$REPO_ROOT/.gitignore"
   fi

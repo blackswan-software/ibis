@@ -4,6 +4,13 @@
 # Python interpreter — macOS/Git-Bash may expose only `python`, not `python3`.
 PYTHON="$(command -v python3 || command -v python || true)"
 
+# Worker identity — who is this session? Override with IBIS_WORKER (e.g. a Claude
+# session id). Used to attribute messages and own leases.
+worker_id() {
+  if [[ -n "${IBIS_WORKER:-}" ]]; then printf '%s\n' "$IBIS_WORKER"
+  else printf '%s@%s\n' "${USER:-$(id -un 2>/dev/null || echo user)}" "$(hostname -s 2>/dev/null || echo host)"; fi
+}
+
 # ── Locations ─────────────────────────────────────────────────────────────
 # IBIS_HOME = where ibis is installed (set by bin/ibis).
 # REPO_ROOT = the git repo (or cwd) ibis is operating on.

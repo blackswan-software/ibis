@@ -12,8 +12,12 @@
 #   ibis doctor [--strict]             enforce check+doc+test on every node (CI)
 #   ibis audit [--strict] [--no-run]   prove docs are true (assertions) + fresh (stamps)
 #   ibis stamp [<node>|--all]          (re)stamp docs after reviewing them
-#   ibis notify <message>              drop a message on the bus
-#   ibis hub <init|add|poll|…>         coordinator: aggregate many repos into one HANDOFF
+#   ibis notify <message>              drop a message on the bus (attributed to IBIS_WORKER)
+#   ibis whoami                        print this worker's id (IBIS_WORKER or user@host)
+#   ibis claim <node> [--ttl N]        lease a node so other workers don't collide
+#   ibis release <node> [--force]      release your lease
+#   ibis who                           active claims in this repo (expired ones swept)
+#   ibis hub <init|add|poll|who|…>     coordinator: aggregate many repos into one HANDOFF
 #   ibis install-scheduler             (re)install the timer + instant-drain watcher
 #   ibis uninstall-scheduler           remove this repo's scheduler
 set -uo pipefail
@@ -39,7 +43,7 @@ export IBIS_HOME
 # shellcheck source=/dev/null
 source "$IBIS_HOME/lib/common.sh"
 source "$IBIS_HOME/lib/scheduler.sh"
-for f in discover addnode init poll status doctor audit hub notify; do
+for f in discover addnode init poll status doctor audit hub claim notify; do
   source "$IBIS_HOME/lib/cmd_$f.sh"
 done
 
@@ -61,6 +65,10 @@ case "$cmd" in
   audit)     set_paths; ibis_audit "$@";;
   stamp)     set_paths; ibis_stamp "$@";;
   notify)    set_paths; ibis_notify "$@";;
+  whoami)    worker_id;;
+  claim)     set_paths; ibis_claim "$@";;
+  release)   set_paths; ibis_release "$@";;
+  who|claims) set_paths; ibis_who "$@";;
   hub)       ibis_hub "$@";;
   install-scheduler)
     set_paths; require_init

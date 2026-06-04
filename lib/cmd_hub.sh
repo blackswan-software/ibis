@@ -38,7 +38,9 @@ ibis_hub() {
     list|ls)   _hub_list;;
     poll)      _hub_poll "$@";;
     status)    _hub_status;;
-    *) die "ibis hub <init|add|remove|list|poll|status>";;
+    who)       _hub_who;;
+    notify)    _hub_notify "$@";;
+    *) die "ibis hub <init|add|remove|list|poll|status|who|notify>";;
   esac
 }
 
@@ -122,6 +124,37 @@ _hub_list() {
 }
 
 _hub_status() { require_hub; echo "ibis hub: $HUB_ROOT"; _hub_list; }
+
+# ibis hub notify <msg> — drop an attributed message on the hub-level bus.
+_hub_notify() {
+  require_hub
+  local msg="$*"; [[ -z "$msg" ]] && die "usage: ibis hub notify <message>"
+  mkdir -p "$HUB_NOTIFY"
+  printf '@%s: %s\n' "$(worker_id)" "$msg" > "$HUB_NOTIFY/$(date +%s)-$$-$RANDOM.pending"
+  ok "queued (hub): $msg"
+}
+
+# ibis hub who — active leases across all members (reuses _lease_read).
+_hub_who() {
+  require_hub
+  local member name f any=0 now; now=$(date +%s)
+  while IFS= read -r member; do
+    [[ -z "$member" ]] && continue
+    name="$(basename "$member")"
+    [[ -d "$member/.ibis/claims" ]] || continue
+    for f in "$member/.ibis/claims"/*.lease; do
+      [[ -f "$f" ]] || continue
+      local cur
+      if cur="$(_lease_read "$f")"; then
+        local w e t n; IFS=$'\t' read -r w e t n <<<"$cur"
+        printf '  \033[36m%-22s\033[0m [%s] %-18s %ss left\n' "$w" "$name" "$n" "$(( e + t - now ))"
+        any=1
+      fi
+    done
+  done < <(_members)
+  [[ $any -eq 0 ]] && echo "  no active claims across members"
+  return 0
+}
 
 # ibis hub poll [--drain-only] — aggregate drain + checks across members.
 _hub_poll() {

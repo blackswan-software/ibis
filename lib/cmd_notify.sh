@@ -10,6 +10,7 @@ ibis_notify() {
   mkdir -p "$NOTIFY_DIR"
   # BSD date has no %N; $$/$RANDOM keep names unique within a second.
   local f="$NOTIFY_DIR/$(date +%s)-$$-$RANDOM-msg.pending"
-  printf '%s\n' "$msg" > "$f"
+  # Attribute the message to this worker so the inbox shows who sent it.
+  printf '@%s: %s\n' "$(worker_id)" "$msg" > "$f"
   ok "queued: $msg"
 }

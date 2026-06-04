@@ -152,6 +152,30 @@ hub-level bus (`.ibis-hub/.notify/`) carries cross-repo / hub-addressed notes.
 `ibis hub poll --drain-only` is the instant path (reuses the last checks). A repo
 polled by a hub shouldn't also run its own poll timer — the hub is the poller.
 
+## Multiple workers — identity + leases
+
+Several people (or several Claude sessions) can work the same repos without
+colliding. Two primitives, still just files:
+
+- **Identity.** Every worker has an id — `IBIS_WORKER` if set (e.g. a Claude
+  session id), else `user@host`. `ibis notify` attributes messages with it, so the
+  inbox shows `[api] @alice: migration started`, not anonymous noise.
+- **Leases.** `ibis claim <node>` writes an *expiring* lease. Another worker who
+  tries to claim the same node is refused and told who holds it; the lease
+  auto-expires (default 1h, `--ttl`), so a dead session never blocks anyone.
+
+```sh
+export IBIS_WORKER=alice
+ibis claim payments            # "claimed payments as alice (ttl 3600s)"
+ibis who                       # who's working what, with time left
+ibis release payments          # or let it expire
+ibis hub who                   # leases across every member repo
+```
+
+This replaces "commit-as-you-go discipline and hope" with a visible, self-healing
+lock — the failure mode (one worker's work invisible to another) that bites every
+shared-repo multi-agent setup.
+
 ## Auditing — proving docs are true and not stale
 
 `ibis doctor` proves the doc and test *files exist*. `ibis audit` goes further and
@@ -221,8 +245,12 @@ double-process a message.
 | `ibis doctor [--strict]` | enforce check+doc+test on every node (CI gate) |
 | `ibis audit [--strict] [--no-run]` | prove docs are true (assertions) + fresh (stamps) |
 | `ibis stamp [<node>\|--all]` | (re)stamp docs after you've reviewed them |
-| `ibis notify <message>` | drop a message on the bus |
-| `ibis hub <init\|add\|poll\|…>` | coordinator: aggregate many repos into one HANDOFF |
+| `ibis notify <message>` | drop a message on the bus (attributed to the worker) |
+| `ibis whoami` | print this worker's id (`IBIS_WORKER` or `user@host`) |
+| `ibis claim <node> [--ttl N]` | lease a node so other workers don't collide |
+| `ibis release <node> [--force]` | release your lease |
+| `ibis who` | active claims in this repo (expired ones swept) |
+| `ibis hub <init\|add\|poll\|who\|…>` | coordinator: aggregate many repos into one HANDOFF |
 
 ---
 
