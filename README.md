@@ -324,14 +324,24 @@ macOS and the FileSystemWatcher script on Windows. It does **not** assert that t
 file-watch trigger physically fires — that needs an interactive session, so verify
 it once by hand on a real (or VM) macOS/Windows box.
 
-## Using ibis from non-Claude agents (MCP) — planned
+## Using ibis from non-Claude agents (MCP)
 
-ibis is model-agnostic by construction (files + git + shell). The planned `ibis mcp`
-server exposes the coordination layer over the Model Context Protocol so any MCP agent
-(Cursor, Codex, Gemini, Claude…) consumes it natively — `status`, `open-todos`,
-`node-doc`, `claim`/`release`/`who`, `notify`, `audit`, `ledger` as tools. It pairs
-with code-retrieval MCP servers: **CodeGraph answers "what is this code"; ibis answers
-"what's the state of the system + who's doing what."** Spec: [docs/mcp.md](docs/mcp.md).
+ibis is model-agnostic by construction (files + git + shell). `ibis mcp` runs a stdio
+MCP server (hand-rolled JSON-RPC, no SDK dependency — python3 only) so any MCP agent
+(Cursor, Codex, Gemini, Claude…) consumes the coordination layer natively:
+
+```json
+{ "mcpServers": { "ibis": { "command": "ibis", "args": ["mcp"] } } }
+```
+
+Tools: read — `ibis_status`, `ibis_open_todos`, `ibis_node`, `ibis_doctor`,
+`ibis_audit`, `ibis_who`, `ibis_ledger`; write — `ibis_claim`, `ibis_release`,
+`ibis_notify`, `ibis_ledger_record` (the multi-agent-coordination differentiator vs
+read-only code-graph servers; `--read-only` hides them). Resources: `ibis://handoff`,
+`ibis://graph`, `ibis://node/<id>/doc`, `ibis://ledger/<node>`.
+
+Pairs with code-retrieval MCP servers: **CodeGraph answers "what is this code"; ibis
+answers "what's the state of the system + who's doing what."** Design: [docs/mcp.md](docs/mcp.md).
 
 ## License
 

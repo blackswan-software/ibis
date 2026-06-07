@@ -21,6 +21,7 @@
 #   ibis who                           active claims in this repo (expired ones swept)
 #   ibis hub <init|add|poll|who|…>     coordinator: aggregate many repos into one HANDOFF
 #   ibis hook <install|uninstall>      git hook: keep .ibis/GRAPH.dot in sync with commits
+#   ibis mcp [--read-only]             stdio MCP server — coordination for any MCP agent
 #   ibis install-scheduler             (re)install the timer + instant-drain watcher
 #   ibis uninstall-scheduler           remove this repo's scheduler
 set -uo pipefail
@@ -75,6 +76,7 @@ case "$cmd" in
   who|claims) set_paths; ibis_who "$@";;
   hub)       ibis_hub "$@";;
   hook)      ibis_hook "$@";;
+  mcp)       set_paths; IBIS_MCP_REPO="$REPO_ROOT" exec "$PYTHON" "$IBIS_HOME/lib/mcp_server.py" "$@";;
   install-scheduler)
     set_paths; require_init
     install_scheduler "$(project_name)" "$(project_id)";;
