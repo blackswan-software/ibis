@@ -26,11 +26,19 @@ ibis_doctor() {
     elif [[ ! -f "$REPO_ROOT/$doc" ]]; then
       problems+=("doc missing: $doc")
     fi
+    # test= may be a script (tests/ibis/x.sh) or a symbol-pinned ref
+    # (path::Class). Split off ::symbol, check the file exists, and — when a
+    # symbol is given — that it's actually defined there (catches stale refs
+    # like a test= pointing at a class that lives in a different file).
+    local test_file="${test%%::*}" test_sym=""
+    [[ "$test" == *::* ]] && test_sym="${test##*::}"
     if [[ -z "$test" ]]; then
       problems+=("no test=")
-    elif [[ ! -f "$REPO_ROOT/$test" ]]; then
-      problems+=("test missing: $test")
-    elif [[ $strict -eq 1 ]] && grep -q 'STUB' "$REPO_ROOT/$test" 2>/dev/null; then
+    elif [[ ! -f "$REPO_ROOT/$test_file" ]]; then
+      problems+=("test missing: $test_file")
+    elif [[ -n "$test_sym" ]] && ! grep -qE "(class|def|func|describe)[[:space:]]+$test_sym\b" "$REPO_ROOT/$test_file" 2>/dev/null; then
+      problems+=("test ref unresolved: $test_sym not defined in $test_file")
+    elif [[ $strict -eq 1 && -z "$test_sym" ]] && grep -q 'STUB' "$REPO_ROOT/$test_file" 2>/dev/null; then
       problems+=("test is a stub")
     fi
 

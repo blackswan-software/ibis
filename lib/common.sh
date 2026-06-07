@@ -77,3 +77,10 @@ project_name() {
   fi
 }
 project_id() { nodeid "$(project_name)"; }
+
+# Read a key from .ibis/config (e.g. cover=*/install.sh,*/README.md). Empty if unset.
+config_get() {
+  local k="$1" cfg="${IBIS_DIR:-}/config"
+  [[ -n "${IBIS_DIR:-}" && -f "$cfg" ]] || return 0
+  grep "^$k=" "$cfg" 2>/dev/null | head -1 | cut -d= -f2-
+}

@@ -200,6 +200,21 @@ If a commit message reads like it closes work (`fixed`, `done`, `shipped`,
 staged, the hook reminds you to clear the todo in the same commit. Other workers
 read the graph, not your commit history.
 
+**Doc coverage.** The same hook also enforces that user-visible files are
+*graph-tracked*, so a stale string in them is caught by a node's `test=` instead
+of by a human. Add a `cover=` line to `.ibis/config` with comma-separated globs:
+
+```
+cover=*/install.sh,*/README.md,*/docs/*.json
+```
+
+Now a commit that touches a file matching one of those globs while **no** node
+references it via `doc=` is flagged — add a node (with `doc=` + `test=`) for it.
+This is the portable form of the pattern that closed a multi-round "the stale
+string the test should have caught" loop. `ibis doctor` complements it by
+validating `test=` refs *resolve* — a `path::Symbol` test whose symbol isn't
+defined in that file (a stale pin) fails.
+
 ## Auditing — proving docs are true and not stale
 
 `ibis doctor` proves the doc and test *files exist*. `ibis audit` goes further and
