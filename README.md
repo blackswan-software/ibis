@@ -324,6 +324,15 @@ macOS and the FileSystemWatcher script on Windows. It does **not** assert that t
 file-watch trigger physically fires — that needs an interactive session, so verify
 it once by hand on a real (or VM) macOS/Windows box.
 
+## Using ibis from non-Claude agents (MCP) — planned
+
+ibis is model-agnostic by construction (files + git + shell). The planned `ibis mcp`
+server exposes the coordination layer over the Model Context Protocol so any MCP agent
+(Cursor, Codex, Gemini, Claude…) consumes it natively — `status`, `open-todos`,
+`node-doc`, `claim`/`release`/`who`, `notify`, `audit`, `ledger` as tools. It pairs
+with code-retrieval MCP servers: **CodeGraph answers "what is this code"; ibis answers
+"what's the state of the system + who's doing what."** Spec: [docs/mcp.md](docs/mcp.md).
+
 ## License
 
 MIT. See [LICENSE](LICENSE).
