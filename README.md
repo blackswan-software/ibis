@@ -249,6 +249,32 @@ ibis stamp web        # mark web's doc reviewed after editing it
 Exit non-zero on any stale doc, failed assertion, or failing test — so `ibis audit`
 is a CI gate for *doc honesty*, complementing `ibis doctor`'s structural gate.
 
+## Validating — proving metadata references are real
+
+`ibis doctor` proves files *exist*. `ibis audit` proves they're *honest*. `ibis
+validate` fills the gap between them: do the paths that nodes *reference* actually
+resolve to real files on disk?
+
+It checks every node's verifiable attributes:
+
+1. **doc=/doc2=/doc3=** — does the referenced file exist?
+2. **paths=** — does every listed path exist?
+3. **test=** — does the test file exist? If it uses `::Symbol`, is the symbol defined?
+4. **scenarios=** — does every scenario directory exist?
+5. **todo=** — is an OPEN/EXECUTING item older than 21 days (stale)?
+6. **check=/deploy=/restart=** — do referenced scripts exist? (not run, just resolved)
+
+```sh
+ibis validate                     # full validation
+ibis validate --node gateway      # single node
+ibis validate --json              # JSON report (for CI)
+ibis validate --fix               # suggest fixes for stale todos
+ibis validate --stale-days 14     # custom staleness threshold
+```
+
+Exit non-zero on errors — wire it into CI between `ibis doctor` and `ibis audit`
+for the full integrity chain: structure → references → honesty.
+
 ## Messaging: polled floor, event-driven ceiling
 
 The `.notify/` bus is fire-and-forget — drop a message, the next drain renders it
@@ -283,6 +309,7 @@ double-process a message.
 | `ibis status [--all]` | run checks now, report pass/fail |
 | `ibis doctor [--strict]` | enforce check+doc+test on every node (CI gate) |
 | `ibis audit [--strict] [--no-run]` | prove docs are true (assertions) + fresh (stamps) |
+| `ibis validate [--node X] [--json] [--fix]` | prove metadata refs resolve to real files |
 | `ibis stamp [<node>\|--all]` | (re)stamp docs after you've reviewed them |
 | `ibis notify <message>` | drop a message on the bus (attributed to the worker) |
 | `ibis project` | print this project's name (`.ibis/config` or dir name) |
@@ -314,6 +341,7 @@ jobs:
           git clone --depth 1 https://github.com/HBDunn/blackswan-ibis ~/.ibis-cli
           ~/.ibis-cli/install.sh && echo "$HOME/.local/bin" >> "$GITHUB_PATH"
       - run: ibis doctor --strict   # structure: every node has check + doc + test
+      - run: ibis validate          # references: doc=, paths=, test= point to real files
       - run: ibis audit             # honesty: docs fresh, assertions true, tests pass
 ```
 
@@ -335,7 +363,7 @@ MCP server (hand-rolled JSON-RPC, no SDK dependency — python3 only) so any MCP
 ```
 
 Tools: read — `ibis_status`, `ibis_open_todos`, `ibis_node`, `ibis_doctor`,
-`ibis_audit`, `ibis_who`, `ibis_ledger`; write — `ibis_claim`, `ibis_release`,
+`ibis_audit`, `ibis_validate`, `ibis_who`, `ibis_ledger`; write — `ibis_claim`, `ibis_release`,
 `ibis_notify`, `ibis_ledger_record` (the multi-agent-coordination differentiator vs
 read-only code-graph servers; `--read-only` hides them). Resources: `ibis://handoff`,
 `ibis://graph`, `ibis://node/<id>/doc`, `ibis://ledger/<node>`.

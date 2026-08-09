@@ -1,6 +1,6 @@
 # ibis MCP server — spec
 
-**Status: spec (not yet implemented).** Goal: expose ibis's coordination layer over
+**Status: implemented** (`lib/mcp_server.py`, launched via `ibis mcp`). Exposes ibis's coordination layer over
 the Model Context Protocol so *any* MCP-speaking agent — Cursor, Codex, Gemini,
 OpenCode, Claude — consumes ibis natively (structured tools + resources) instead of
 shelling out and parsing text.
@@ -45,6 +45,7 @@ Read:
 | `ibis_neighbors` | `{node}` | upstream/downstream edges (cross-repo in `--hub`) | graph edges |
 | `ibis_doctor` | `{strict?:bool}` | contract violations | `ibis doctor` |
 | `ibis_audit` | `{strict?:bool}` | stale/false-claim findings | `ibis audit` |
+| `ibis_validate` | `{node?,json?,stale_days?}` | metadata ref errors + stale todos | `ibis validate` |
 | `ibis_who` | `{}` | active leases (worker, node, ttl left) | `ibis who` |
 | `ibis_ledger` | `{node}` | measured trend | `ibis ledger <node>` |
 
@@ -79,16 +80,12 @@ round-trip — the inverse of CodeGraph pinning code structure.
   run only the graph's own `check=` (same trust boundary as `ibis poll`).
 - `--read-only` flag disables all write tools for untrusted agents.
 
-## Implementation sketch (when built)
+## Implementation
 
-- `lib/mcp_server.py` using the official MCP Python SDK; `ibis mcp` execs it via
-  `$PYTHON`. Each tool shells to the existing `ibis` subcommand (or reads `.ibis/`
-  directly) and returns structured JSON — so the MCP server is a thin adapter over the
-  CLI, not a reimplementation.
-- Keep the bash CLI authoritative; the MCP server is one more consumer of the same
-  `.ibis/` substrate (like poll.sh and the hooks).
-- Pairs with a code-retrieval MCP server in the same agent: CodeGraph for code, ibis
-  for coordination.
+`lib/mcp_server.py` — hand-rolled stdio JSON-RPC 2.0 (no SDK dependency, python3
+only). Each tool shells to the existing `ibis` subcommand — the MCP server is a thin
+adapter over the CLI, not a reimplementation. The bash CLI stays authoritative; the
+MCP server is one more consumer of the `.ibis/` substrate (like poll.sh and the hooks).
 
 ## Out of scope (for v1)
 

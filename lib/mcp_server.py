@@ -59,6 +59,14 @@ READ_TOOLS = [
     ("ibis_audit", "Prove docs are true (assertions) + fresh (stamps).",
      {"strict": {"type": "boolean"}},
      lambda a: run(["audit"] + (["--strict"] if a.get("strict") else []))),
+    ("ibis_validate", "Prove metadata refs (doc=, paths=, test=, scenarios=) resolve to real files.",
+     {"node": {"type": "string", "description": "validate a single node"},
+      "json": {"type": "boolean", "description": "return JSON report"},
+      "stale_days": {"type": "integer", "description": "flag OPEN todos older than N days (default 21)"}},
+     lambda a: run(["validate"]
+                    + (["--node", a["node"]] if a.get("node") else [])
+                    + (["--json"] if a.get("json") else [])
+                    + (["--stale-days", str(a["stale_days"])] if a.get("stale_days") else []))),
     ("ibis_who", "Active work leases (worker, node, ttl left).", {},
      lambda a: run(["who"])),
     ("ibis_ledger", "Show a node's measured trend.",

@@ -11,6 +11,7 @@
 #   ibis status [--all]                run checks now, report pass/fail
 #   ibis doctor [--strict]             enforce check+doc+test on every node (CI)
 #   ibis audit [--strict] [--no-run]   prove docs are true (assertions) + fresh (stamps)
+#   ibis validate [--node X] [--json]  prove metadata refs resolve to real files
 #   ibis stamp [<node>|--all]          (re)stamp docs after reviewing them
 #   ibis ledger <node> [value] [note]  record / show a node's measured trend
 #   ibis notify <message>              drop a message on the bus (attributed to IBIS_WORKER)
@@ -47,7 +48,7 @@ export IBIS_HOME
 # shellcheck source=/dev/null
 source "$IBIS_HOME/lib/common.sh"
 source "$IBIS_HOME/lib/scheduler.sh"
-for f in discover addnode init poll status doctor audit hub claim hook ledger notify; do
+for f in discover addnode init poll status doctor audit validate hub claim hook ledger notify; do
   source "$IBIS_HOME/lib/cmd_$f.sh"
 done
 
@@ -67,6 +68,7 @@ case "$cmd" in
   status)    set_paths; ibis_status "$@";;
   doctor)    set_paths; ibis_doctor "$@";;
   audit)     set_paths; ibis_audit "$@";;
+  validate)  set_paths; ibis_validate "$@";;
   stamp)     set_paths; ibis_stamp "$@";;
   ledger)    set_paths; ibis_ledger "$@";;
   notify)    set_paths; ibis_notify "$@";;
