@@ -85,6 +85,22 @@ jobs:
           ibis audit
           echo "OK audit: fresh passes, --strict catches TODO, stamp drift detected + cleared"
 
+      - name: Validate — metadata refs resolve to real files
+        run: |
+          set -euo pipefail
+          repo="$(mktemp -d)"; cd "$repo"; git init -q
+          printf 'services:\n  web:\n    image: nginx\n' > compose.yaml
+          ibis init --adopt --no-units >/dev/null
+          ibis validate                                  # clean repo should pass
+          ibis validate --json | python3 -c "import sys,json; r=json.load(sys.stdin); assert r['errors']==0, f'unexpected errors: {r}'"
+          # Break a doc= reference → validate catches it
+          sed 's|doc="|doc="nonexistent/|' .ibis/GRAPH.dot > .ibis/GRAPH.dot.new
+          mv .ibis/GRAPH.dot.new .ibis/GRAPH.dot
+          if ibis validate 2>/dev/null; then echo "BUG: validate should catch missing doc"; exit 1; fi
+          # Single-node mode
+          ibis validate --node web --json | python3 -c "import sys,json; r=json.load(sys.stdin); assert r['nodes_checked']==1"
+          echo "OK validate: passes clean repo, catches broken refs, single-node mode works"
+
       - name: Messaging — notify + one-shot drain
         run: |
           set -euo pipefail
