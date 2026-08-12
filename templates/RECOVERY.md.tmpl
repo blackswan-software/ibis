@@ -1,0 +1,30 @@
+# Recovery Playbook — {{PROJECT_NAME}}
+
+_Documented incidents and their fixes. Read BEFORE proposing a fix for any
+failure — the pattern may already be here._
+
+## How to use this document
+
+When something breaks:
+1. Check if the symptom matches a pattern below
+2. If yes: follow the documented fix, don't re-derive
+3. If no: fix it, then add the pattern here in the same commit
+
+## Incident template
+
+Copy this for each new incident:
+
+```markdown
+### [Date] Short description
+
+**Symptom:** What the operator/agent sees (error message, health check failure)
+**Root cause:** Why it happened
+**Fix:** What was done (with commands if applicable)
+**Verification:** How to confirm the fix worked
+**Prevention:** What changed to prevent recurrence (test=, check=, etc.)
+**Commit:** Link to the fix commit
+```
+
+## Incidents
+
+<!-- Add incidents below, newest first. -->

@@ -1,0 +1,76 @@
+# {{PROJECT_NAME}} — AI Agent Rules
+
+_These rules govern how AI agents (Claude, Cursor, Codex, etc.) work in this repo._
+
+## Session start — read in order
+
+1. `HANDOFF.md` — What's broken + messages from other sessions. Read FIRST.
+2. `.ibis/GRAPH.dot` — System topology. Nodes carry check=, doc=, test=.
+3. `SESSION.md` — What the last session was working on.
+4. `PRIORITIES.md` — What to work on and in what order.
+
+## Mandatory: graph traversal via DFS
+
+**Never read GRAPH.dot flat.** Large graphs fill context and cause drift.
+Traverse from the relevant node:
+
+```bash
+grep -n 'nodeName \[' .ibis/GRAPH.dot       # find the node
+grep 'nodeName\s*->' .ibis/GRAPH.dot         # outgoing edges
+grep -- '->.*nodeName' .ibis/GRAPH.dot       # incoming edges
+```
+
+Read only the node block (typically 5-30 lines after the match), then follow
+edges to adjacent nodes ONLY if needed for the task.
+
+## Mandatory: notify before every action
+
+Before each change, run:
+```bash
+ibis notify "<what you are about to do>"
+```
+
+The pre-commit hook blocks commits without a recent notification. This creates
+an audit trail — other sessions see your work in HANDOFF.md.
+
+## Mandatory: commit as you go
+
+After each logical change (doc edit, fix, script add):
+1. `ibis notify "<what changed>"`
+2. `git add <specific files>` (never `git add .`)
+3. `git commit`
+4. `git push`
+
+Do NOT batch commits at the end. Other sessions can't see uncommitted work.
+
+## Never do
+
+- Never read the whole GRAPH.dot (use DFS traversal)
+- Never propose fixes without reading the node's doc= first
+- Never commit .env, secrets, or credentials
+- Never skip the ibis notify step
+- Never take destructive actions without explicit user approval
+
+## Before fixing anything
+
+1. Read the node's `doc=` attribute — is there a documented procedure?
+2. Check `RECOVERY.md` — has this incident pattern been seen before?
+3. Read `PRIORITIES.md` — is this the right priority to work on?
+
+## Anti-patterns from past sessions
+
+_Add entries here as they occur. Each should note what happened and how to
+avoid it:_
+
+<!-- Example:
+- SSH'd to production to check config instead of reading the graph node first.
+  Fix: always check doc= and check= attributes before SSH.
+-->
+
+## Proving your work
+
+When you claim something is "fixed" or "done":
+- Record a measurement: `ibis ledger <node> <value> "<what you measured>"`
+- Update the node's todo= attribute in GRAPH.dot
+- Update PRIORITIES.md if this closes a priority item
+- Update the doc= file if the system state changed

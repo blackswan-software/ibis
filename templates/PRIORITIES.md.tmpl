@@ -1,0 +1,39 @@
+# Priorities — {{PROJECT_NAME}}
+
+_What to work on and in what order. Updated as work completes._
+
+## P0 — Blocking (fix now)
+
+_Active failures surfaced by `ibis status`. Anything that breaks users._
+
+<!-- Example:
+- [ ] API returning 500 on /auth endpoint (node: authService, since 2026-08-01)
+-->
+
+## P1 — High (this week)
+
+_Important work with a deadline or dependency._
+
+<!-- Example:
+- [ ] Migrate database schema for v2 API (node: database, blocks: apiV2)
+- [x] Fix rate limiter false positives (node: rateLimiter, done 2026-07-28)
+-->
+
+## P2 — Normal (this sprint)
+
+_Planned work, no immediate deadline._
+
+## P3 — Low (backlog)
+
+_Nice to have. Will get done when higher priorities clear._
+
+## Completed (recent)
+
+_Moved here when done. Keep the last 10 for context; archive older ones._
+
+## Rules
+
+- P0 is auto-populated by health check failures (HANDOFF.md P0 section)
+- When you fix a P0, mark it done here AND update the graph node's todo=
+- When you complete any priority, move it to Completed with date + commit
+- Don't reorder priorities without discussing with the team

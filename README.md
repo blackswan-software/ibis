@@ -188,19 +188,28 @@ stale todo and redoes it (or reports it open).
 ibis has a structural edge here: **the graph lives in the repo** (`.ibis/GRAPH.dot`),
 so closing a node's `todo=` can ride in the *same commit* as the work — unlike a
 centralized graph in a separate repo, which can't be updated atomically with the
-code. `ibis hook install` adds a `commit-msg` hook that catches the slip:
+code. `ibis hook install` installs three hooks:
 
 ```sh
-ibis hook install                 # warn when a commit closes work but doesn't stage the graph
-export IBIS_HOOK_STRICT=1         # make it block instead of warn
+ibis hook install                 # installs commit-msg + post-commit + pre-commit (if enabled)
+export IBIS_HOOK_STRICT=1         # make warnings block instead of warn
 ```
 
-If a commit message reads like it closes work (`fixed`, `done`, `shipped`,
-`scrub`, `complete`…) while open `todo=` items exist and `.ibis/GRAPH.dot` isn't
-staged, the hook reminds you to clear the todo in the same commit. Other workers
-read the graph, not your commit history.
+**1. commit-msg — graph sync + doc coverage.** If a commit message reads like it
+closes work (`fixed`, `done`, `shipped`, `scrub`, `complete`…) while open `todo=`
+items exist and `.ibis/GRAPH.dot` isn't staged, the hook reminds you to clear the
+todo in the same commit. Other workers read the graph, not your commit history.
 
-**Doc coverage.** The same hook also enforces that user-visible files are
+**2. post-commit — auto-notify.** After every commit, automatically sends an
+`ibis notify` with the commit hash, subject line, and changed files. This means
+every commit is visible in the HANDOFF inbox — no manual notification needed.
+
+**3. pre-commit — notify-required gate** (opt-in). Enable with
+`require_notify=true` in `.ibis/config`. Blocks commits unless `ibis notify` was
+called in the last 15 minutes (configurable: `notify_window=20`). Forces the
+discipline of describing what you're about to do before you do it.
+
+**Doc coverage.** The commit-msg hook also enforces that user-visible files are
 *graph-tracked*, so a stale string in them is caught by a node's `test=` instead
 of by a human. Add a `cover=` line to `.ibis/config` with comma-separated globs:
 
@@ -370,6 +379,69 @@ read-only code-graph servers; `--read-only` hides them). Resources: `ibis://hand
 
 Pairs with code-retrieval MCP servers: **CodeGraph answers "what is this code"; ibis
 answers "what's the state of the system + who's doing what."** Design: [docs/mcp.md](docs/mcp.md).
+
+## Visualizing the graph
+
+The graph is Graphviz DOT — render it with any tool that reads `.dot`:
+
+```sh
+# SVG (best for browsers — zoomable, searchable)
+dot -Tsvg .ibis/GRAPH.dot -o graph.svg
+
+# PNG (quick preview)
+dot -Tpng .ibis/GRAPH.dot -o graph.png
+
+# Interactive (if you have xdot)
+xdot .ibis/GRAPH.dot
+```
+
+For large graphs, filter to a subgraph:
+```sh
+# Show only a node and its neighbors
+grep -E '(mynode|->.*mynode|mynode.*->)' .ibis/GRAPH.dot
+```
+
+Online renderers like [dreampuf.github.io/GraphvizOnline](https://dreampuf.github.io/GraphvizOnline)
+work for quick sharing — paste the DOT source.
+
+---
+
+## Templates
+
+ibis ships templates for the methodology docs that make the coordination
+framework work. Copy and customize them for your project:
+
+```sh
+ls ~/.ibis-cli/templates/
+```
+
+| Template | Purpose |
+|---|---|
+| `CLAUDE.md.tmpl` | AI agent rules — session start order, DFS traversal, notify discipline |
+| `SESSION.md.tmpl` | Session handoff — what you worked on, what's unfinished |
+| `RECOVERY.md.tmpl` | Incident case files — symptom, root cause, fix, prevention |
+| `PRIORITIES.md.tmpl` | Priority queue — P0-P3 with auto-population from health checks |
+| `NO_GO_LIST.md.tmpl` | Decision exclusions — things explicitly not in the plan |
+
+Usage:
+```sh
+cp ~/.ibis-cli/templates/CLAUDE.md.tmpl CLAUDE.md
+# Edit PROJECT_NAME and customize for your project
+```
+
+See [docs/ai-agents.md](docs/ai-agents.md) for the full agent configuration guide.
+
+---
+
+## Documentation
+
+| Doc | What it covers |
+|---|---|
+| [docs/nodes.md](docs/nodes.md) | Node contract, discovery, adoption, auditing, multi-check, todo lifecycle |
+| [docs/mcp.md](docs/mcp.md) | MCP server design — tools, resources, read-only mode |
+| [docs/workflow.md](docs/workflow.md) | Full lifecycle: design → graph → implement → test → measure → close |
+| [docs/ai-agents.md](docs/ai-agents.md) | Configuring Claude/Cursor/Codex to use ibis — CLAUDE.md, settings, MCP |
+| [docs/metrics.md](docs/metrics.md) | Metrics methodology — what to measure, thresholds, ledger integration |
 
 ## License
 

@@ -135,6 +135,70 @@ hard-codes for ecosystem ok-rate (case file + `measure-ok-rate.sh` + `ECO_RATE_L
 + a pre-commit gate); `ibis ledger` + the doc/audit/hook primitives are its portable
 form.
 
+## Multiple checks per node
+
+A node with one health dimension gets `check=`. Nodes with several independent
+health signals use numbered attributes:
+
+```dot
+apiGateway [
+  check="curl -fsS localhost:8080/healthz",
+  check2="curl -fsS localhost:8080/metrics | grep -q up",
+  check3="test $(curl -s localhost:8080/queue/depth) -lt 1000",
+  doc=".ibis/docs/api-gateway.md",
+  test="tests/ibis/api-gateway.sh"
+];
+```
+
+`ibis status` and `ibis poll` run all `check`, `check2`, `check3`, ... attributes.
+Each is reported independently — a node can be "liveness OK, metrics DOWN, queue OK".
+This prevents "green on the probe, broken on the data" failures where a single
+health check masks a real problem.
+
+Use multi-check when:
+- The node has distinct failure modes (liveness vs correctness vs capacity)
+- A single check would mask partial failures
+- Different checks have different remediation paths
+
+## Todo lifecycle
+
+The `todo=` attribute tracks active work on a node. It follows a simple
+state machine:
+
+```
+  (empty)  →  OPEN  →  EXECUTING  →  DONE / FIXED
+                ↑          |
+                └──────────┘  (blocked → re-open)
+```
+
+### States
+
+| State | Meaning | Example |
+|---|---|---|
+| `todo="OPEN: migrate to v2 schema"` | Work identified, not started | Backlog item |
+| `todo="EXECUTING: @alice migrating schema"` | Claimed, in progress | Active work |
+| `todo="DONE (2026-08-12): v2 schema shipped"` | Completed with date | Closed |
+| `todo="FIXED (2026-08-12): rate limiter tuned"` | Bug/incident resolved | Closed |
+
+### Rules
+
+- **OPEN → EXECUTING**: claim the node first (`ibis claim <node>`)
+- **EXECUTING → DONE/FIXED**: record a measurement (`ibis ledger`), update the
+  doc, and clear the todo in the same commit as the fix
+- The commit-msg hook (`ibis hook`) catches commits that use completion language
+  without staging `GRAPH.dot` — preventing stale todos that other workers read
+  as still-open
+- `ibis validate --stale-days 21` flags OPEN/EXECUTING todos older than 21 days
+
+### Archiving
+
+When a todo reaches DONE/FIXED, you can either:
+- Remove the `todo=` attribute entirely (clean graph)
+- Leave it as `todo="DONE ..."` for audit trail (ibis ignores DONE in staleness checks)
+
+Move the completed item to the `## Completed` section of PRIORITIES.md with date
+and commit hash.
+
 ## Editing by hand
 
 You can always edit `GRAPH.dot` directly — it's the source of truth and meant to be
