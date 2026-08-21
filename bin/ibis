@@ -9,8 +9,12 @@
 #   ibis add-node <name> --check '…'   add a node (creates doc + test stubs)
 #   ibis poll [--drain-only]           run checks + drain bus (used by systemd)
 #   ibis status [--all]                run checks now, report pass/fail
+#   ibis status --rich [--all] [--cluster X] [--node X] [--dry-run] [--json]
+#   ibis node <name> [--edges] [--depth N]  DFS node lookup (never read graph flat)
+#   ibis render                        regenerate graph.html from GRAPH.dot
 #   ibis doctor [--strict]             enforce check+doc+test on every node (CI)
 #   ibis audit [--strict] [--no-run]   prove docs are true (assertions) + fresh (stamps)
+#   ibis audit-log [--strict]          run audit + append to .ibis/audit.log
 #   ibis validate [--node X] [--json]  prove metadata refs resolve to real files
 #   ibis stamp [<node>|--all]          (re)stamp docs after reviewing them
 #   ibis ledger <node> [value] [note]  record / show a node's measured trend
@@ -20,7 +24,7 @@
 #   ibis claim <node> [--ttl N]        lease a node so other workers don't collide
 #   ibis release <node> [--force]      release your lease
 #   ibis who                           active claims in this repo (expired ones swept)
-#   ibis hub <init|add|poll|who|…>     coordinator: aggregate many repos into one HANDOFF
+#   ibis hub <init|add|poll|who|currency|…>  coordinator: aggregate many repos into one HANDOFF
 #   ibis hook <install|uninstall>      git hook: keep .ibis/GRAPH.dot in sync with commits
 #   ibis mcp [--read-only]             stdio MCP server — coordination for any MCP agent
 #   ibis install-scheduler             (re)install the timer + instant-drain watcher
@@ -48,7 +52,7 @@ export IBIS_HOME
 # shellcheck source=/dev/null
 source "$IBIS_HOME/lib/common.sh"
 source "$IBIS_HOME/lib/scheduler.sh"
-for f in discover addnode init poll status doctor audit validate hub claim hook ledger notify; do
+for f in discover addnode init poll status doctor audit validate hub claim hook ledger notify node render; do
   source "$IBIS_HOME/lib/cmd_$f.sh"
 done
 
@@ -68,6 +72,7 @@ case "$cmd" in
   status)    set_paths; ibis_status "$@";;
   doctor)    set_paths; ibis_doctor "$@";;
   audit)     set_paths; ibis_audit "$@";;
+  audit-log) set_paths; ibis_audit_log "$@";;
   validate)  set_paths; ibis_validate "$@";;
   stamp)     set_paths; ibis_stamp "$@";;
   ledger)    set_paths; ibis_ledger "$@";;
@@ -76,6 +81,8 @@ case "$cmd" in
   claim)     set_paths; ibis_claim "$@";;
   release)   set_paths; ibis_release "$@";;
   who|claims) set_paths; ibis_who "$@";;
+  node)      set_paths; ibis_node "$@";;
+  render)    set_paths; ibis_render "$@";;
   hub)       ibis_hub "$@";;
   hook)      ibis_hook "$@";;
   mcp)       set_paths; IBIS_MCP_REPO="$REPO_ROOT" exec "$PYTHON" "$IBIS_HOME/lib/mcp_server.py" "$@";;

@@ -133,3 +133,29 @@ ibis_audit() {
   echo "    failed assertion → the doc claims something untrue; fix the doc or the system"
   return 1
 }
+
+# ibis audit-log [--strict] [--no-run]
+# Runs audit and appends a timestamped summary line to .ibis/audit.log.
+# Designed to be called by the scheduler or cron for persistent tracking.
+ibis_audit_log() {
+  require_init
+  local log="$IBIS_DIR/audit.log"
+  local ts_now; ts_now="$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
+
+  local output rc
+  output="$(ibis_audit "$@" 2>&1)" || true
+  rc=$?
+
+  local summary
+  summary="$(echo "$output" | tail -1 | sed 's/\x1b\[[0-9;]*m//g')"
+
+  printf '%s  exit=%d  %s\n' "$ts_now" "$rc" "$summary" >> "$log"
+
+  echo "$output"
+  if [[ $rc -eq 0 ]]; then
+    ok "audit log: $log"
+  else
+    warn "audit log: $log (failures recorded)"
+  fi
+  return $rc
+}

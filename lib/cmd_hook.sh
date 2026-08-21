@@ -110,6 +110,7 @@ _hook_check() {
   local rc=0
   _hook_graph_sync   || rc=1
   _hook_doc_coverage || rc=1
+  _hook_doc_drift    || rc=1
   return $rc
 }
 
@@ -162,6 +163,26 @@ _hook_doc_coverage() {
     printf '    - %s\n' "${missing[@]}"
     echo "  Add a node with doc= (and test=) for each."
   } >&2
+  [[ -n "${IBIS_HOOK_STRICT:-}" ]] && { echo "  IBIS_HOOK_STRICT=1 → blocking." >&2; return 1; }
+  return 0
+}
+
+# Commit uses fix/close language but no documentation file (.md) is staged.
+# When you fix something, the doc should be updated in the same commit.
+_hook_doc_drift() {
+  echo "$msg" | grep -qiE "$COMPLETION_RE" || return 0
+  echo "$staged" | grep -qiE '\.(md|rst|txt)$' && return 0
+  local doc_dir="$IBIS_DIR/docs"
+  [[ -d "$doc_dir" ]] || return 0
+  local has_docs; has_docs="$(ls "$doc_dir"/*.md 2>/dev/null | head -1)"
+  [[ -z "$has_docs" ]] && return 0
+  cat >&2 <<EOF
+
+⚠ ibis DOC-DRIFT: this commit reads like it closes or fixes work, but no
+  documentation file (.md) is staged. If the fix changes behavior, update
+  the relevant doc in .ibis/docs/ in this same commit.
+  Staged files: $(echo "$staged" | tr '\n' ' ')
+EOF
   [[ -n "${IBIS_HOOK_STRICT:-}" ]] && { echo "  IBIS_HOOK_STRICT=1 → blocking." >&2; return 1; }
   return 0
 }

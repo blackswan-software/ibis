@@ -155,6 +155,11 @@ hub-level bus (`.ibis-hub/.notify/`) carries cross-repo / hub-addressed notes.
 `ibis hub poll --drain-only` is the instant path (reuses the last checks). A repo
 polled by a hub shouldn't also run its own poll timer — the hub is the poller.
 
+**Drift detection.** `ibis hub currency` fetches every member repo and reports
+behind/ahead/diverged/dirty status in `REPO_STATE.md`. Run it on a timer or
+before making claims about repo state — it catches the "I thought I was on the
+latest" class of bugs before they compound.
+
 ## Multiple workers — identity + leases
 
 Several people (or several Claude sessions) can work the same repos without
@@ -327,7 +332,11 @@ double-process a message.
 | `ibis claim <node> [--ttl N]` | lease a node so other workers don't collide |
 | `ibis release <node> [--force]` | release your lease |
 | `ibis who` | active claims in this repo (expired ones swept) |
-| `ibis hub <init\|add\|poll\|who\|…>` | coordinator: aggregate many repos into one HANDOFF |
+| `ibis node <name> [--edges] [--depth N]` | DFS node lookup (never read the graph flat) |
+| `ibis render [--open]` | regenerate `graph.html` from `GRAPH.dot` (interactive WASM viewer) |
+| `ibis audit-log [--strict]` | run audit + append timestamped result to `.ibis/audit.log` |
+| `ibis hub <init\|add\|poll\|who\|currency\|…>` | coordinator: aggregate many repos into one HANDOFF |
+| `ibis hub currency` | multi-repo drift detection — writes `REPO_STATE.md` |
 | `ibis hook <install\|uninstall>` | git hook: keep `.ibis/GRAPH.dot` in sync with commits |
 
 ---
@@ -385,6 +394,9 @@ answers "what's the state of the system + who's doing what."** Design: [docs/mcp
 The graph is Graphviz DOT — render it with any tool that reads `.dot`:
 
 ```sh
+# Interactive WASM viewer (no graphviz install needed — client-side rendering)
+ibis render --open           # regenerates graph.html from GRAPH.dot, opens in browser
+
 # SVG (best for browsers — zoomable, searchable)
 dot -Tsvg .ibis/GRAPH.dot -o graph.svg
 
@@ -393,6 +405,17 @@ dot -Tpng .ibis/GRAPH.dot -o graph.png
 
 # Interactive (if you have xdot)
 xdot .ibis/GRAPH.dot
+```
+
+`ibis render` creates a self-contained `graph.html` in your repo root. It uses
+`@viz-js/viz` (WASM graphviz) loaded from CDN — the HTML file works offline after
+the first load. Features: zoom/pan, node search, click-to-inspect attributes, SVG
+export.
+
+For DFS node lookup (agents should use this instead of reading the whole graph):
+```sh
+ibis node gateway --edges           # show node + incoming/outgoing edges
+ibis node gateway --edges --depth 2 # follow edges 2 levels deep
 ```
 
 For large graphs, filter to a subgraph:
@@ -422,6 +445,7 @@ ls ~/.ibis-cli/templates/
 | `RECOVERY.md.tmpl` | Incident case files — symptom, root cause, fix, prevention |
 | `PRIORITIES.md.tmpl` | Priority queue — P0-P3 with auto-population from health checks |
 | `NO_GO_LIST.md.tmpl` | Decision exclusions — things explicitly not in the plan |
+| `graph.html` | Interactive WASM graph viewer — used by `ibis render` |
 
 Usage:
 ```sh

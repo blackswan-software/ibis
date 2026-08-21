@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8">
+<title>ibis — System Graph</title>
+<style>
+  html,body{margin:0;padding:0;height:100%;background:#0a0a0e;color:#e0e0e0;font-family:monospace;overflow:hidden}
+  #toolbar{position:fixed;top:0;left:0;right:0;padding:8px 12px;background:#1a1a2e;border-bottom:1px solid #00d4ff;z-index:10;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+  #toolbar input{background:#0a0a0e;color:#e0e0e0;border:1px solid #446688;padding:4px 8px;font-family:monospace;width:220px}
+  #toolbar button{background:#1a1a2e;color:#00d4ff;border:1px solid #00d4ff;padding:4px 10px;cursor:pointer;font-family:monospace}
+  #toolbar button:hover{background:#00d4ff;color:#0a0a0e}
+  #toolbar .stat{color:#aaa}#toolbar .stat b{color:#00d4ff}
+  #stage{position:fixed;top:42px;left:0;right:0;bottom:0;overflow:hidden;cursor:grab}
+  #stage.dragging{cursor:grabbing}
+  #svgwrap{transform-origin:0 0}#svgwrap svg{display:block}
+  .hl polygon,.hl path,.hl ellipse{stroke:#ffaa00 !important;stroke-width:3 !important}
+  #info{position:fixed;bottom:8px;right:8px;max-width:480px;padding:10px;background:rgba(26,26,46,.97);border:1px solid #00d4ff;font-size:11px;line-height:1.4;display:none;max-height:70vh;overflow-y:auto}
+</style></head><body>
+<div id="toolbar">
+  <span class="stat"><b id="nodeCount">…</b> nodes · <b id="edgeCount">…</b> edges</span>
+  <input id="search" placeholder="search node names…" />
+  <button id="resetBtn">Reset</button>
+  <button id="svgBtn">SVG ↓</button>
+  <span class="stat">scroll=zoom · drag=pan · click node=details</span>
+</div>
+<div id="stage">
+  <div id="status">Loading @viz-js/viz (modern graphviz WASM)…<br><small>~2MB download, takes 5–15 s on first load.</small></div>
+  <div id="svgwrap"></div>
+</div>
+<div id="info"></div>
+
+<script id="dotData" type="application/json">"digraph project {\n  rankdir=TB;\n  node [shape=box, style=filled, fillcolor=\"#1a1a2e\", color=\"#00d4ff\",\n        fontcolor=\"#e0e0e0\", fontname=\"monospace\"];\n  edge [color=\"#00d4ff\", fontcolor=\"#aaaaaa\", fontname=\"monospace\"];\n\n  root [label=\"project\", doc=\".ibis/docs/project.md\"];\n}"</script>
+<script id="attrData" type="application/json">{}</script>
+
+<script type="module">
+"use strict";
+const dotText = JSON.parse(document.getElementById("dotData").textContent);
+const nodeAttrs = JSON.parse(document.getElementById("attrData").textContent);
+const statusEl = document.getElementById("status");
+
+function showErr(msg) {
+  statusEl.className = "err";
+  statusEl.innerHTML = msg;
+}
+
+let viz;
+const cdns = [
+  "https://cdn.jsdelivr.net/npm/@viz-js/viz@3.7.0/lib/viz-standalone.mjs",
+  "https://unpkg.com/@viz-js/viz@3.7.0/lib/viz-standalone.mjs"
+];
+let lastErr = null;
+for (const url of cdns) {
+  try {
+    const mod = await import(url);
+    viz = await mod.instance();
+    break;
+  } catch (e) {
+    lastErr = e;
+    console.warn("CDN failed:", url, e);
+  }
+}
+if (!viz) {
+  showErr("Could not load @viz-js/viz from any CDN.<br>Error: <code>" + (lastErr ? lastErr.message : "unknown") + "</code><br>Offline alternative: <code>dot -Tsvg .ibis/GRAPH.dot -o graph.svg</code>");
+  throw lastErr || new Error("no viz");
+}
+
+let svg;
+try {
+  svg = viz.renderString(dotText, { format: "svg" });
+} catch (e) {
+  showErr("Render failed: <code>" + (e.message || e) + "</code><br>The DOT file may have unsupported syntax.");
+  throw e;
+}
+
+const wrap = document.getElementById("svgwrap");
+wrap.innerHTML = svg;
+statusEl.style.display = "none";
+
+const nodes = wrap.querySelectorAll("g.node");
+const edges = wrap.querySelectorAll("g.edge");
+document.getElementById("nodeCount").textContent = nodes.length;
+document.getElementById("edgeCount").textContent = edges.length;
+
+let scale = 0.6, tx = 20, ty = 20;
+const stage = document.getElementById("stage");
+const apply = () => { wrap.style.transform = `translate(${tx}px,${ty}px) scale(${scale})`; };
+apply();
+
+document.getElementById("resetBtn").addEventListener("click", () => { scale = 0.6; tx = 20; ty = 20; apply(); });
+
+let dragging = false, sx = 0, sy = 0;
+stage.addEventListener("mousedown", e => {
+  if (e.target.closest("g.node")) return;
+  dragging = true; sx = e.clientX - tx; sy = e.clientY - ty;
+  stage.classList.add("dragging");
+});
+window.addEventListener("mousemove", e => {
+  if (!dragging) return;
+  tx = e.clientX - sx; ty = e.clientY - sy; apply();
+});
+window.addEventListener("mouseup", () => { dragging = false; stage.classList.remove("dragging"); });
+stage.addEventListener("wheel", e => {
+  e.preventDefault();
+  const r = stage.getBoundingClientRect();
+  const mx = e.clientX - r.left, my = e.clientY - r.top;
+  const f = e.deltaY < 0 ? 1.15 : 1/1.15;
+  const ns = Math.max(0.05, Math.min(8, scale * f));
+  tx = mx - (mx - tx) * (ns / scale);
+  ty = my - (my - ty) * (ns / scale);
+  scale = ns; apply();
+}, { passive: false });
+
+document.getElementById("search").addEventListener("input", e => {
+  const q = e.target.value.toLowerCase().trim();
+  nodes.forEach(n => {
+    n.classList.remove("hl");
+    if (!q) return;
+    const t = (n.querySelector("title")?.textContent || "").toLowerCase();
+    const l = (n.querySelector("text")?.textContent || "").toLowerCase();
+    if (t.includes(q) || l.includes(q)) n.classList.add("hl");
+  });
+});
+
+const info = document.getElementById("info");
+nodes.forEach(n => {
+  n.style.cursor = "pointer";
+  n.addEventListener("click", e => {
+    e.stopPropagation();
+    const id = ((n.querySelector("title")?.textContent) || "?").trim();
+    const attrs = nodeAttrs[id] || "(no attributes found for this node)";
+    const safe = attrs.replace(/&/g, "&amp;").replace(/</g, "&lt;");
+    info.innerHTML = "<b>" + id + "</b><pre>" + safe + "</pre>";
+    info.style.display = "block";
+  });
+});
+stage.addEventListener("click", e => {
+  if (!e.target.closest("g.node")) info.style.display = "none";
+});
+
+document.getElementById("svgBtn").addEventListener("click", () => {
+  const blob = new Blob([wrap.innerHTML], { type: "image/svg+xml" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "GRAPH.svg";
+  a.click();
+});
+</script>
+</body></html>

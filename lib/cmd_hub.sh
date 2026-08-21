@@ -52,7 +52,8 @@ ibis_hub() {
     status)    _hub_status;;
     who)       _hub_who;;
     notify)    _hub_notify "$@";;
-    *) die "ibis hub <init|add|remove|list|poll|status|who|notify>";;
+    currency)  _hub_currency "$@";;
+    *) die "ibis hub <init|add|remove|list|poll|status|who|notify|currency>";;
   esac
 }
 
@@ -212,4 +213,107 @@ _hub_poll() {
 
   _render_handoff "$HUB_HANDOFF" "$(basename "$HUB_ROOT") (ibis hub)" failures new_msgs
   echo "[$(ts)] ibis hub poll: ${#failures[@]} failures, ${#new_msgs[@]} messages across $(_members | grep -c .) member(s)$([[ $DRAIN_ONLY -eq 1 ]] && echo ' (drain-only)')"
+}
+
+# ibis hub currency — multi-repo drift detection.
+# Fetches each member, reports behind/ahead/diverged/dirty.
+# Writes REPO_STATE.md in the hub root.
+_hub_currency() {
+  require_hub
+
+  # Try to pick up SSH agent for cron environments
+  if [[ -z "${SSH_AUTH_SOCK:-}" ]]; then
+    local sock="/run/user/$(id -u)/keyring/ssh"
+    [[ -S "$sock" ]] && export SSH_AUTH_SOCK="$sock"
+  fi
+
+  local output="$HUB_ROOT/REPO_STATE.md"
+  local tmp; tmp="$(mktemp "${output}.XXXXXX")"
+  trap 'rm -f "$tmp"' RETURN
+
+  local ts_now; ts_now="$(date -u '+%Y-%m-%d %H:%M:%SZ')"
+  {
+    echo "# Repo currency state"
+    echo ""
+    echo "Last check: \`$ts_now\`  (ibis hub currency)"
+    echo ""
+    echo "---"
+    echo ""
+  } > "$tmp"
+
+  local any_drift=0 member name
+
+  while IFS= read -r member; do
+    [[ -z "$member" ]] && continue
+    name="$(_member_name "$member")"
+
+    if [[ ! -d "$member/.git" ]]; then
+      printf '## %s\n  not a git repo at `%s`\n\n' "$name" "$member" >> "$tmp"
+      any_drift=1
+      continue
+    fi
+
+    local branch
+    branch="$(git -C "$member" rev-parse --abbrev-ref HEAD 2>/dev/null || echo "")"
+
+    if [[ -z "$branch" || "$branch" == "HEAD" ]]; then
+      printf '## %s\n  detached HEAD\n\n' "$name" >> "$tmp"
+      any_drift=1
+      continue
+    fi
+
+    local fetch_out fetch_rc
+    fetch_out="$(timeout 30 git -C "$member" fetch --all --quiet 2>&1)"
+    fetch_rc=$?
+
+    local upstream
+    upstream="$(git -C "$member" rev-parse --abbrev-ref "${branch}@{upstream}" 2>/dev/null || echo "")"
+    if [[ -z "$upstream" ]]; then
+      printf '## %s\n  branch `%s` has no upstream\n\n' "$name" "$branch" >> "$tmp"
+      any_drift=1
+      continue
+    fi
+
+    if [[ $fetch_rc -ne 0 ]]; then
+      printf '## %s\n  fetch failed (rc=%d): %s\n\n' "$name" "$fetch_rc" "$fetch_out" >> "$tmp"
+      any_drift=1
+      continue
+    fi
+
+    local behind ahead dirty
+    behind="$(git -C "$member" rev-list --count "HEAD..${upstream}" 2>/dev/null || echo "?")"
+    ahead="$(git -C "$member" rev-list --count "${upstream}..HEAD" 2>/dev/null || echo "?")"
+    dirty="$(git -C "$member" status --porcelain 2>/dev/null | wc -l | awk '{print $1}')"
+
+    printf '## %s  (`%s` <- `%s`)\n' "$name" "$branch" "$upstream" >> "$tmp"
+
+    if [[ "$behind" == "0" && "$ahead" == "0" ]]; then
+      printf '  up to date\n' >> "$tmp"
+    elif [[ "$behind" != "0" && "$ahead" == "0" ]]; then
+      printf '  **%s commits behind %s** — run `git pull --ff-only`\n' "$behind" "$upstream" >> "$tmp"
+      git -C "$member" log "HEAD..${upstream}" --oneline 2>/dev/null | head -5 | sed 's/^/    /' >> "$tmp"
+      any_drift=1
+    elif [[ "$behind" == "0" && "$ahead" != "0" ]]; then
+      printf '  %s commits AHEAD of %s — push when ready\n' "$ahead" "$upstream" >> "$tmp"
+    else
+      printf '  DIVERGED: %s ahead / %s behind %s\n' "$ahead" "$behind" "$upstream" >> "$tmp"
+      any_drift=1
+    fi
+
+    if [[ "$dirty" != "0" ]]; then
+      printf '  working tree has %s uncommitted change(s)\n' "$dirty" >> "$tmp"
+    fi
+    echo >> "$tmp"
+  done < <(_members)
+
+  if [[ "$any_drift" == "0" ]]; then
+    { echo "---"; echo ""; echo "**All member repos current.**"; } >> "$tmp"
+    ok "all member repos current"
+  else
+    { echo "---"; echo ""; echo "**Drift detected.** Pull behind repos before making claims about their state."; } >> "$tmp"
+    warn "drift detected — see $output"
+  fi
+
+  mv "$tmp" "$output"
+  trap - RETURN
 }
