@@ -1,8 +1,7 @@
 # Part A: Installing and Setting Up ibis
 
-_Free, open-source. This is the prerequisite for the enterprise workshop
-([Part B](presentation-enterprise.md)) and also a standalone guide for
-anyone adopting ibis._
+_Free, open-source. This is a standalone guide for anyone adopting ibis.
+Enterprise workshop available separately — contact for details._
 
 ---
 
@@ -396,37 +395,73 @@ ibis ledger database 99.5 "after migration"
 
 ## Step 4: Set up your AI agent
 
-Copy the CLAUDE.md template:
+`ibis init` generates a `CLAUDE.md` from a template. This file IS the
+user manual — for the agent, not the human. It teaches the agent three
+things:
+
+### Before touching any node
+
 ```sh
-cp ~/.ibis-cli/templates/CLAUDE.md.tmpl CLAUDE.md
+ibis node gateway --context
 ```
 
-The key rules for your agent:
+One command returns everything the agent needs (~50-100 lines):
+- Node definition with all attributes
+- Incoming and outgoing edges
+- Doc summary (first 30 lines)
+- RECOVERY.md entries mentioning this node
+- PRIORITIES.md entries mentioning this node
+- HANDOFF.md entries (what's broken, what's in the inbox)
+- Last 5 ledger measurements
+- Active leases (is someone else working on this?)
 
-1. **Read HANDOFF.md first** — every session starts here
-2. **DFS the graph, never read it flat** — `grep 'nodeName \[' .ibis/GRAPH.dot`
-3. **Notify before every action** — `ibis notify "what I'm about to do"`
-4. **Commit after every logical change** — don't batch
-5. **Measure before declaring done** — `ibis ledger <node> <value>`
+This replaces reading 4-5 separate files. Fewer tokens, no steps to skip.
+
+### Before committing
+
+```sh
+ibis notify "fixed the gateway timeout — increased pool size to 20"
+```
+
+The pre-commit hook blocks the commit if notify wasn't called. The agent
+must describe what it did before it can commit.
+
+### After fixing something
+
+```sh
+ibis ledger gateway 200 "response time ms after pool fix"
+```
+
+A measurement, not a claim. The ledger is append-only.
+
+The human's job: review diffs and approve commits. The agent follows
+the CLAUDE.md rules. The hooks make violations impossible.
 
 ---
 
-## Step 5: Install the git hooks
+## Step 5: Hooks and enforcement
 
-```sh
-ibis hook install
-```
+`ibis init` installs git hooks automatically. Three hooks enforce the
+workflow mechanically:
 
-Three hooks:
-
-1. **commit-msg** — warns if you close work without updating the graph
+1. **pre-commit** — blocks commits if `ibis notify` wasn't called recently
 2. **post-commit** — auto-notifies with commit hash + subject + files
-3. **pre-commit** (opt-in) — blocks commits without a recent `ibis notify`
+3. **commit-msg** — warns if fix-language commit has no doc update staged
 
-Enable the pre-commit gate:
-```sh
-echo "require_notify=true" >> .ibis/config
-```
+The hooks are the reason agents follow the rules. Without them, CLAUDE.md
+is advisory — the agent might skip steps. With them, skipping is a blocked
+commit.
+
+### Optional: PreToolUse hooks (Claude Code)
+
+For even stronger enforcement, Claude Code supports PreToolUse hooks that
+block violations *before* the agent can act:
+
+- Block flat GRAPH.dot reads (force `ibis node --context` instead)
+- Block unenforced SSH (require pre-ssh-check first)
+
+These are configured in `~/.claude/settings.json`. See the ibis docs for
+the hook configuration.
 
 ---
 
@@ -515,15 +550,16 @@ Migrating the payment gateway to v2 API.
 ## Step 11: Visualize the graph
 
 ```sh
-# SVG (zoomable, searchable)
-dot -Tsvg .ibis/GRAPH.dot -o graph.svg
-
-# PNG (quick preview)
-dot -Tpng .ibis/GRAPH.dot -o graph.png
-
-# Filter to a subgraph
-grep -E '(mynode|->.*mynode|mynode.*->)' .ibis/GRAPH.dot
+ibis render --open    # interactive WASM viewer in browser (no graphviz needed)
 ```
+
+Or use graphviz directly:
+```sh
+dot -Tsvg .ibis/GRAPH.dot -o graph.svg
+```
+
+Agents use `ibis node <name> --context` for DFS lookup — they never read
+the graph flat or render it.
 
 ---
 
@@ -537,5 +573,4 @@ ibis validate         # all doc=, paths=, test= resolve?
 ibis audit            # docs are fresh, assertions pass?
 ```
 
-All four green = ibis is working. You're ready for the
-[enterprise workshop](presentation-enterprise.md).
+All four green = ibis is working.

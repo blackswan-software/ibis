@@ -1,34 +1,36 @@
 #!/usr/bin/env bash
 # ibis — graph-driven coordination for any repo.
-# The graph (.ibis/GRAPH.dot) IS the system: nodes carry check=, doc=, test=,
-# restart=. ibis polls the checks, drains a fire-and-forget message bus into
-# HANDOFF.md, and enforces that every node has a check, a doc, and a test.
 #
-#   ibis init [--adopt] [--no-units]   scaffold + auto-discover + install timers
-#   ibis discover                      list candidate nodes from repo structure
-#   ibis add-node <name> --check '…'   add a node (creates doc + test stubs)
-#   ibis poll [--drain-only]           run checks + drain bus (used by systemd)
-#   ibis status [--all]                run checks now, report pass/fail
-#   ibis status --rich [--all] [--cluster X] [--node X] [--dry-run] [--json]
-#   ibis node <name> [--edges] [--depth N]  DFS node lookup (never read graph flat)
-#   ibis render                        regenerate graph.html from GRAPH.dot
-#   ibis doctor [--strict]             enforce check+doc+test on every node (CI)
-#   ibis audit [--strict] [--no-run]   prove docs are true (assertions) + fresh (stamps)
-#   ibis audit-log [--strict]          run audit + append to .ibis/audit.log
-#   ibis validate [--node X] [--json]  prove metadata refs resolve to real files
-#   ibis stamp [<node>|--all]          (re)stamp docs after reviewing them
-#   ibis ledger <node> [value] [note]  record / show a node's measured trend
-#   ibis notify <message>              drop a message on the bus (attributed to IBIS_WORKER)
-#   ibis project                       print this project's name (.ibis/config or dir)
-#   ibis whoami                        print this worker's id (IBIS_WORKER or user@host)
-#   ibis claim <node> [--ttl N]        lease a node so other workers don't collide
+# Humans run init. AI agents and hooks do the rest.
+# The graph (.ibis/GRAPH.dot) IS the system: nodes carry check=, doc=,
+# test=, restart=. Hooks enforce the workflow. The scheduler runs checks
+# and drains the message bus into HANDOFF.md automatically.
+#
+# Setup (human, once):
+#   ibis init [--adopt] [--no-units]   scaffold + auto-discover + hooks + scheduler
+#
+# For AI agents (CLAUDE.md tells them when):
+#   ibis node <name> --context         everything before acting: graph + doc + recovery + priorities
+#   ibis node <name> [--depth N]       node definition + edges
+#   ibis notify <message>              describe what you're about to do (pre-commit enforces)
+#   ibis claim <node> [--ttl N]        lease a node so other sessions don't collide
 #   ibis release <node> [--force]      release your lease
-#   ibis who                           active claims in this repo (expired ones swept)
-#   ibis hub <init|add|poll|who|currency|…>  coordinator: aggregate many repos into one HANDOFF
-#   ibis hook <install|uninstall>      git hook: keep .ibis/GRAPH.dot in sync with commits
-#   ibis mcp [--read-only]             stdio MCP server — coordination for any MCP agent
-#   ibis install-scheduler             (re)install the timer + instant-drain watcher
-#   ibis uninstall-scheduler           remove this repo's scheduler
+#   ibis ledger <node> [value] [note]  prove the fix with a measurement
+#   ibis status [--all]                check health now
+#
+# Automatic (hooks + scheduler):
+#   ibis poll [--drain-only]           checks + bus drain (systemd timer, every 2 min)
+#   ibis hook <install|uninstall>      git hooks: notify enforcement, doc-drift, audit
+#   ibis doctor [--strict]             structure gate (CI)
+#   ibis audit [--strict] [--no-run]   honesty gate (CI)
+#   ibis validate [--node X] [--json]  reference gate (CI)
+#
+# Other:
+#   ibis render [--open]               graph visualization
+#   ibis hub <sub>                     multi-repo coordinator
+#   ibis mcp [--read-only]             MCP server for any AI agent
+#   ibis who                           active leases
+#   ibis stamp [<node>|--all]          re-stamp docs after review
 set -uo pipefail
 
 # ibis uses associative arrays — needs bash >= 4. macOS ships bash 3.2; fix with
