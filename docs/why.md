@@ -1,16 +1,17 @@
-# AI Team Coordination — Why It Matters
+# Why ibis exists
 
-_The evidence and context behind the workshop. Read this first._
+_The problem ibis is built for, and the evidence that it's real._
 
-This document covers:
-- Why developers are now managers of AI workers
-- What goes wrong without coordination (real costs)
-- What production deployments are teaching the industry
-- How to guardrail LLMs against hallucinations, destruction, and false claims
+Most developers added AI agents to their workflow without adding a coordination
+layer. This document covers what that costs:
 
-The hands-on content is in two companion documents:
-- **[Part A: Installing and Setting Up ibis](presentation-setup.md)** — free, open
-- **[Part B: Multi-Team AI Development Workshop](presentation-enterprise.md)** — enterprise training
+- Why working with AI agents is a management problem, not a coding problem
+- What goes wrong without coordination, with real numbers
+- What production multi-agent deployments are learning the hard way
+- How to guardrail agents against hallucinations, destruction, and false claims
+
+If you want to install ibis instead, start at
+[getting-started.md](getting-started.md).
 
 ---
 

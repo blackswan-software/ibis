@@ -1,8 +1,6 @@
-# Part A: Installing and Setting Up ibis
+# Getting started with ibis
 
-_Free, open-source. A standalone install and setup guide — mechanics only.
-For how to *work with* AI (delegation, supervision, review, verifying claims),
-see the enterprise workshop; contact for details._
+_Install and setup. For the reasoning behind the tool, see [why.md](why.md)._
 
 ---
 
