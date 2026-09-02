@@ -1,0 +1,75 @@
+#!/usr/bin/env bash
+# Publication guard for the PUBLIC ibis repo.
+#
+# This repo is public. The risk here is not coordination — it is committing
+# something that should never leave the private side. On 2026-09-02 a file
+# with workshop pricing, revenue projections and internal funnel details was
+# sitting in this repo days before it went public. It was never pushed, so
+# nothing leaked, but nothing had stopped it either. This is that stop.
+#
+# What belongs where is recorded in the ibisContentSplit node of hub/GRAPH.dot.
+# Bypass (think first): git commit --no-verify
+set -uo pipefail
+cd "$(git rev-parse --show-toplevel)" || exit 1
+STAGED="$(git diff --cached --name-only --diff-filter=ACMR)"
+[ -z "$STAGED" ] && exit 0
+
+# The content scans below grep for the very patterns this file contains, so
+# scanning the guard would block every edit to the guard. Exclude it from the
+# content checks only — the filename check still covers everything.
+SCAN="$(echo "$STAGED" | grep -v '^\.githooks/' || true)"
+FAIL=0
+sect() { printf '\n\033[1m── %s ──\033[0m\n' "$1"; }
+red()  { printf '\033[0;31m%s\033[0m\n' "$1"; }
+
+# 1. Filenames that are private by nature
+sect "Private-by-name"
+BADNAME=$(echo "$STAGED" | grep -iE '(marketing|pricing|revenue|gtm|sales|workshop|enterprise|consulting|training-plan|presentation-enterprise)' || true)
+if [ -n "$BADNAME" ]; then
+  red "  BLOCKED — these look like private commercial material:"
+  echo "$BADNAME" | sed 's/^/    /'
+  echo "  Commercial material lives in black-swan-software (permanently private)."
+  FAIL=1
+else
+  echo "  ok"
+fi
+
+# 2. Commercial content in the diff
+sect "Commercial content"
+MONEY=$([ -n "$SCAN" ] && git diff --cached -U0 -- $SCAN 2>/dev/null | grep -E '^\+' | grep -vE '^\+\+\+' \
+  | grep -inE '\$[0-9][0-9,]*(K|k|,000)|revenue projection|per-person cost|per-seat|profit margin|ARR\b|conversion rate' || true)
+if [ -n "$MONEY" ]; then
+  red "  BLOCKED — pricing/revenue language in a public repo:"
+  echo "$MONEY" | head -5 | sed 's/^/    /'
+  FAIL=1
+else
+  echo "  ok"
+fi
+
+# 3. Private product/infra names
+sect "Private references"
+PRIV=$([ -n "$SCAN" ] && git diff --cached -U0 -- $SCAN 2>/dev/null | grep -E '^\+' | grep -vE '^\+\+\+' \
+  | grep -inE 'cygnus-registry|digitaloceanspaces|10\.124\.16|24\.199\.119|blackswan-software\.ai|/opt/blackswan' || true)
+if [ -n "$PRIV" ]; then
+  red "  BLOCKED — private infrastructure reference:"
+  echo "$PRIV" | head -5 | sed 's/^/    /'
+  FAIL=1
+else
+  echo "  ok"
+fi
+
+# 4. Secrets and .env
+sect "Secrets"
+SEC=$([ -n "$SCAN" ] && git diff --cached -U0 -- $SCAN 2>/dev/null | grep -E '^\+' | grep -vE '^\+\+\+' \
+  | grep -inE '(api_key|secret|token|password)[[:space:]]*[:=][[:space:]]*["'"'"']?[A-Za-z0-9/_+-]{16,}' \
+  | grep -viE '(\$\{|\$\(|os\.environ|getenv|env\.|example|placeholder|xxx|redacted|your-|<.*>|VLLM_API_KEY not set)' || true)
+if [ -n "$SEC" ] || echo "$STAGED" | grep -qE '(^|/)\.env(\.|$)'; then
+  red "  BLOCKED — secret or .env staged."
+  [ -n "$SEC" ] && echo "$SEC" | head -3 | sed 's/^/    /'
+  FAIL=1
+else
+  echo "  ok"
+fi
+
+[ "$FAIL" -ne 0 ] && { printf '\n'; red "Commit blocked — this repo is PUBLIC."; echo "If it is genuinely safe: git commit --no-verify"; exit 1; }
+exit 0
