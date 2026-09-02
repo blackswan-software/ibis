@@ -26,7 +26,7 @@ Zero dependencies beyond bash, python3, and git.
 ### macOS / Linux / WSL
 
 ```sh
-git clone https://github.com/HBDunn/blackswan-ibis ~/.ibis-cli
+git clone https://github.com/blackswan-software/ibis ~/.ibis-cli
 ~/.ibis-cli/install.sh
 ibis version
 ```
@@ -34,7 +34,7 @@ ibis version
 ### Windows (Git Bash)
 
 ```powershell
-git clone https://github.com/HBDunn/blackswan-ibis $env:USERPROFILE\.ibis-cli
+git clone https://github.com/blackswan-software/ibis $env:USERPROFILE\.ibis-cli
 & $env:USERPROFILE\.ibis-cli\install.ps1
 # then from Git Bash:
 ibis version
@@ -304,7 +304,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: |
-          git clone --depth 1 https://github.com/HBDunn/blackswan-ibis ~/.ibis-cli
+          git clone --depth 1 https://github.com/blackswan-software/ibis ~/.ibis-cli
           ~/.ibis-cli/install.sh && echo "$HOME/.local/bin" >> "$GITHUB_PATH"
       - run: ibis doctor --strict   # structure
       - run: ibis validate          # references

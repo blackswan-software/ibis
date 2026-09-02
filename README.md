@@ -1,6 +1,6 @@
 # ibis
 
-![ci](https://github.com/HBDunn/blackswan-ibis/actions/workflows/ci.yml/badge.svg)
+![ci](https://github.com/blackswan-software/ibis/actions/workflows/ci.yml/badge.svg)
 ![license](https://img.shields.io/badge/license-MIT-blue)
 ![deps](https://img.shields.io/badge/deps-bash%20%2B%20python3%20%2B%20git-lightgrey)
 
@@ -71,7 +71,7 @@ Human: ibis init          ← one time, per repo
 ## Install
 
 ```sh
-git clone https://github.com/HBDunn/blackswan-ibis ~/.ibis-cli
+git clone https://github.com/blackswan-software/ibis ~/.ibis-cli
 ~/.ibis-cli/install.sh
 ```
 
@@ -154,7 +154,7 @@ Command reference: `ibis help`, or `ibis <command> --help`.
 ## Support
 
 Questions, bugs, and feature requests:
-[issues](https://github.com/HBDunn/blackswan-ibis/issues).
+[issues](https://github.com/blackswan-software/ibis/issues).
 
 Teams adopting ibis at scale can also get hands-on training and workshops —
 see [blackswan-software.com](https://blackswan-software.com) for details.
