@@ -29,7 +29,7 @@ require_hub() { [[ -f "$MEMBERS" ]] || die "no .ibis-hub here — run 'ibis hub 
 _members()    { [[ -f "$MEMBERS" ]] && grep -vE '^[[:space:]]*(#|$)' "$MEMBERS" 2>/dev/null; return 0; }
 
 # A member's project name — its .ibis/config name=, else the dir name. So the
-# aggregate HANDOFF tags messages/failures by project (cygnus, web) not by an
+# aggregate HANDOFF tags messages/failures by project (api, web) not by an
 # ambiguous dir basename, and federated refs can use <name>:<node>.
 _member_name() {
   local cfg="$1/.ibis/config"
