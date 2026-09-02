@@ -71,5 +71,25 @@ else
   echo "  ok"
 fi
 
+# 5. Content-split invariant, when the private coordination repo is present.
+# The split spans two repos — what is public here and what is paid-and-private
+# in black-swan-software — so neither side can enforce it alone. hub/GRAPH.dot
+# holds the ibisContentSplit node that owns BOTH sides; this consults it when
+# available so moving docs/why.md private (which kills the funnel) or dragging
+# paid material public is blocked from either direction.
+#
+# Skipped silently when hub is absent: this repo is public and an outside
+# contributor has no hub checkout. Their commits are still covered by 1-4.
+HUB_GUARD="$HOME/blackswan/hub/graph-guard.py"
+HUB_GRAPH="$HOME/blackswan/hub/GRAPH.dot"
+if [ -f "$HUB_GUARD" ] && [ -f "$HUB_GRAPH" ]; then
+  sect "Content split (hub)"
+  if python3 "$HUB_GUARD" --graph "$HUB_GRAPH"; then
+    echo "  ok"
+  else
+    FAIL=1
+  fi
+fi
+
 [ "$FAIL" -ne 0 ] && { printf '\n'; red "Commit blocked — this repo is PUBLIC."; echo "If it is genuinely safe: git commit --no-verify"; exit 1; }
 exit 0
