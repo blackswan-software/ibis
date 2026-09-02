@@ -13,6 +13,7 @@ documented. Every node is held to one contract.
 | `poll="fast"` | no | run this check on the 2-min timer (else on-demand only) |
 | `restart=` | no | remediation command, run by a human/agent after diagnosis |
 | `todo=` | no | active work item for this node |
+| `invariant=` | no | a design decision that must not be silently reverted; the pre-commit guard **blocks** any commit touching this node's `paths=`/`doc=` until `IBIS_ACK=1` |
 
 `ibis doctor` enforces the three required attributes and fails (non-zero) on any
 violation, so it works as a CI gate. `ibis doctor --strict` additionally fails on
@@ -204,3 +205,40 @@ and commit hash.
 You can always edit `GRAPH.dot` directly — it's the source of truth and meant to be
 read and diffed. Just run `ibis doctor` afterward; if you added a node, create its
 doc and test (or re-run `ibis add-node` which scaffolds them).
+
+## `invariant=` — decisions that must not be silently reverted
+
+A graph records *why* something is the way it is. Nothing forces anyone to read
+that reason before changing it, so load-bearing decisions get reverted by
+someone who never knew they were decisions. Documentation does not prevent
+this. A blocked commit does.
+
+```dot
+compiler [
+  check="curl -fsS localhost:8010/healthz",
+  doc=".ibis/docs/compiler.md",
+  test="tests/ibis/compiler.sh",
+  paths="src/compiler/,deploy/compiler.yml",
+  invariant="/tmp is a tmpfs mount, NOT a bind-mount.\nReverting restarts the OOM crash loop fixed in 6bc47a4."
+];
+```
+
+`ibis hook install` (run automatically by `ibis init`) installs a pre-commit
+hook that maps each staged file to its owning node via `paths=`, `doc=`, and
+`docN=`. If a staged file belongs to a node declaring `invariant=`, the commit
+is blocked and the invariant is printed. After reading it:
+
+```sh
+IBIS_ACK=1 git commit ...
+```
+
+Check staged files without committing:
+
+```sh
+ibis guard
+```
+
+Nodes without `invariant=` never block, so this stays silent for ordinary work
+and fires only where reverting is expensive. Unlike the other hook checks it is
+always blocking — it does not honour `IBIS_HOOK_STRICT`, because a warning you
+can scroll past is not a guard.

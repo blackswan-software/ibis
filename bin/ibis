@@ -87,6 +87,7 @@ case "$cmd" in
   render)    set_paths; ibis_render "$@";;
   hub)       ibis_hub "$@";;
   hook)      ibis_hook "$@";;
+  guard)     set_paths; ibis_hook guard "$@";;
   mcp)       set_paths; IBIS_MCP_REPO="$REPO_ROOT" exec "$PYTHON" "$IBIS_HOME/lib/mcp_server.py" "$@";;
   install-scheduler)
     set_paths; require_init

@@ -111,6 +111,18 @@ ibis_init() {
     info "skipped scheduler install (--no-units). Install later: ibis install-scheduler"
   fi
 
+  # ── Git hooks: tracked in .ibis/githooks, activated via core.hooksPath ────
+  # Installed by default. Enforcement that has to be remembered is not
+  # enforcement — the hook is the mechanism, the docs are only a description
+  # of it. Tracked (not .git/hooks) so a fresh clone keeps the protection and
+  # its removal shows up in a diff.
+  echo ""
+  if git -C "$REPO_ROOT" rev-parse --git-dir >/dev/null 2>&1; then
+    _hook_install
+  else
+    info "not a git repo — skipped hook install. Later: ibis hook install"
+  fi
+
   echo ""
   ok "ibis ready. Next:"
   echo "    ibis status     # run all checks now"

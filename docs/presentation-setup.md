@@ -125,6 +125,7 @@ digraph myproject {
 | `deploy=` | How to deploy a new version | `./scripts/deploy-api.sh` |
 | `poll="fast"` | Run this check on the 2-min timer | (else on-demand only) |
 | `todo=` | Active work item for this node | `OPEN: migrate to v2 schema` |
+| `invariant=` | Design decision that must not be silently reverted — **blocks** commits touching this node | `/tmp is tmpfs, not a bind-mount` |
 
 ### The three required attributes
 
@@ -235,10 +236,18 @@ the CLAUDE.md rules. The hooks make violations impossible.
 
 ## Step 5: Hooks and enforcement
 
-`ibis init` installs git hooks automatically. Three hooks enforce the
-workflow mechanically:
+`ibis init` installs git hooks automatically. They are written to
+`.ibis/githooks/` and activated with `core.hooksPath` — **not** copied into
+`.git/hooks/`, which git does not track. An untracked hook is a protection
+that vanishes on a fresh clone while the docs still claim it is active, and
+whose removal never shows up in a diff. Commit `.ibis/githooks/` so the
+protection travels with the repo.
 
-1. **pre-commit** — blocks commits if `ibis notify` wasn't called recently
+Three hooks enforce the workflow mechanically:
+
+1. **pre-commit** — blocks commits that touch a node declaring `invariant=`
+   (always on; acknowledge with `IBIS_ACK=1` after reading it), then blocks
+   if `ibis notify` wasn't called recently (opt-in via `require_notify=true`)
 2. **post-commit** — auto-notifies with commit hash + subject + files
 3. **commit-msg** — warns if fix-language commit has no doc update staged
 
