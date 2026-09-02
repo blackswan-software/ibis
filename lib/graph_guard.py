@@ -98,12 +98,24 @@ def parse_nodes(graph_text):
     return nodes
 
 
-def owns_file(owned, path):
-    """True if graph-declared `owned` covers repo-relative `path`."""
+def owns_file(owned, path, repo_name=None):
+    """True if graph-declared `owned` covers repo-relative `path`.
+
+    A centralized graph — one coordination repo holding the graph for several
+    sibling repos — declares paths as "<repo>/dir/file". Inside <repo>, git
+    reports the staged path as "dir/file", so a literal compare never matches
+    and the guard silently passes. Strip the repo prefix and retry.
+    """
     owned = owned.rstrip("/")
     if not owned:
         return False
-    return path == owned or path.startswith(owned + "/")
+    if path == owned or path.startswith(owned + "/"):
+        return True
+    if repo_name and owned.startswith(repo_name + "/"):
+        stripped = owned[len(repo_name) + 1:]
+        if stripped:
+            return path == stripped or path.startswith(stripped + "/")
+    return False
 
 
 def staged_files(repo_root):
@@ -146,7 +158,7 @@ def main():
             touched = [p for p in n["owns"] if (repo_root / p).exists()]
         else:
             touched = [f for f in files
-                       for o in n["owns"] if owns_file(o, f)]
+                       for o in n["owns"] if owns_file(o, f, repo_root.name)]
         if touched:
             hits.append((n, sorted(set(touched))))
 
