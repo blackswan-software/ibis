@@ -151,6 +151,17 @@ Command reference: `ibis help`, or `ibis <command> --help`.
 
 ---
 
+## Built by
+
+[BlackSwan Software](https://blackswan-software.com) — legacy modernization
+with AI-assisted verification. Seven years leading teams, multiple AI
+implementations across regulated industries. [Learn more](https://blackswan-software.com/about).
+
+## Built with ibis
+
+[Cygnus](https://blackswan-software.ai) — pre-compiled, verified library
+registry across 14 ecosystems. 19 repos, 15 services, coordinated with ibis.
+
 ## Support
 
 Questions, bugs, and feature requests:
