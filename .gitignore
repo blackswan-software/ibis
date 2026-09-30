@@ -7,3 +7,8 @@
 .ibis/.current-failures
 *.pyc
 __pycache__/
+
+# Sensitive docs tracked by Syncthing, not git (NO_GO_LIST)
+docs/training-marketing-plan.md
+docs/presentation-enterprise.md
+docs/presentation-setup.md
